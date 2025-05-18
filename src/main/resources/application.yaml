@@ -1,7 +1,18 @@
 spring:
   application:
     name: dependency-tracker
-  data:
-    mongodb:
-      uri: mongodb://deptracker:deptracker@localhost:27017/dependency-tracker
-      database: dependency-tracker
+  task:
+    scheduling:
+      pool:
+        size: 10
+
+
+jasypt:
+  encryptor:
+    bean: jasyptStringEncryptor
+    password: ${JASYPT_PWD:}
+    key-path: files/local_encryption_key.txt
+server:
+  port: 8080
+  servlet:
+    context-path: /${spring.application.name:}

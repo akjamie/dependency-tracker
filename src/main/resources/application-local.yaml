@@ -1,0 +1,21 @@
+spring:
+  data:
+    mongodb:
+      uri: mongodb://app_user:Test_1234@localhost:27017/dependency_tracker?authSource=admin
+
+
+logging.level:
+    org.springframework.web: DEBUG
+    org.springframework.data.mongodb: DEBUG
+    org.springframework.boot.autoconfigure.mongo: DEBUG
+    org.mongodb.driver: DEBUG
+    org.mongodb.driver.cluster: DEBUG
+    org.mongodb.driver.connection: DEBUG
+    org.mongodb.driver.protocol.command: DEBUG
+    org.mongodb.driver.protocol.insert: DEBUG
+    org.mongodb.driver.protocol.query: DEBUG
+    org.mongodb.driver.protocol.update: DEBUG
+    org.mongodb.driver.protocol.delete: DEBUG
+    org.mongodb.driver.protocol.aggregation: DEBUG
+    org.mongodb.driver.protocol.change_stream: DEBUG
+
