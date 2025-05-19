@@ -17,4 +17,6 @@ public class Dependency implements Serializable {
 
     // actual version
     private String version;
+
+    private String type;
 }

@@ -51,6 +51,11 @@ public class ComponentService {
         }
 
         // 4. Save new component
+        Instant now = Instant.now();
+        componentAndDependency.setCreatedAt(now);
+        componentAndDependency.setChecksum(
+                calculateChecksum(componentAndDependency.getDependencies()));
+        componentAndDependency.setLastUpdatedAt(now);
         componentRepository.save(componentAndDependency);
         return componentAppMapstructMapper.toDto(componentAndDependency);
     }
@@ -70,30 +75,21 @@ public class ComponentService {
     private ComponentAndDependencyDto handleExistingComponent(
             ComponentAndDependency newComponent, ComponentAndDependency existingComponent) {
 
-        try {
-            String newChecksum = calculateChecksum(newComponent.getDependencies());
-            String existingChecksum = existingComponent.getChecksum();
+        String newChecksum = calculateChecksum(newComponent.getDependencies());
+        String existingChecksum = existingComponent.getChecksum();
 
-            if (newChecksum.equals(existingChecksum)) {
-                log.info(
-                        "No changes detected, skipping update for component: {}@{}",
-                        newComponent.getComponentId(),
-                        newComponent.getBranch());
-                return componentAppMapstructMapper.toDto(existingComponent);
-            }
-
-            // Update existing component with new data
-            updateComponent(existingComponent, newChecksum, newComponent);
-            componentRepository.save(existingComponent);
-            return componentAppMapstructMapper.toDto(existingComponent);
-
-        } catch (JsonProcessingException e) {
-            log.error(
-                    "Failed to calculate checksum for component: {}",
+        if (newChecksum.equals(existingChecksum)) {
+            log.info(
+                    "No changes detected, skipping update for component: {}@{}",
                     newComponent.getComponentId(),
-                    e);
-            throw new RuntimeException("Failed to process component dependencies", e);
+                    newComponent.getBranch());
+            return componentAppMapstructMapper.toDto(existingComponent);
         }
+
+        // Update existing component with new data
+        updateComponent(existingComponent, newChecksum, newComponent);
+        componentRepository.save(existingComponent);
+        return componentAppMapstructMapper.toDto(existingComponent);
     }
 
     private void updateComponent(ComponentAndDependency existingComponent, String checksum,
@@ -103,12 +99,17 @@ public class ComponentService {
         existingComponent.setChecksum(checksum);
     }
 
-    private String calculateChecksum(List<Dependency> dependencies) throws JsonProcessingException {
+    private String calculateChecksum(List<Dependency> dependencies) {
         if (dependencies == null || dependencies.isEmpty()) {
             return "";
         }
-        String content = objectMapper.writeValueAsString(dependencies);
-
-        return XxHashUtils.hash(content);
+        try {
+            String content = null;
+            content = objectMapper.writeValueAsString(dependencies);
+            return XxHashUtils.hash(content);
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to generate checksum for dependencies: {}", dependencies, e);
+            return GENERATE_CHECKSUM_FAILED;
+        }
     }
 }

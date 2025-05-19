@@ -979,7 +979,8 @@ class MavenDependencyManager {
                 dependencies: dependencies.collect { dep ->
                     [
                             artefact: "${dep.groupId}:${dep.artifactId}",
-                            version : dep.currentValue
+                            version : dep.currentValue,
+                            type: dep.depType,
                     ]
                 }
         ]

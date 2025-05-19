@@ -16,4 +16,6 @@ public class DependencyDto {
     // actual version
     @NotNull
     private String version;
+
+    private String type;
 }
