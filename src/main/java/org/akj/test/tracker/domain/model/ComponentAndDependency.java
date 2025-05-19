@@ -1,5 +1,6 @@
 package org.akj.test.tracker.domain.model;
 
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -26,6 +27,14 @@ public class ComponentAndDependency {
     // usually, it's groupId:artifactId
     private String componentId;
     private String branch;
+
+    private String compiler;
+
+    // for java, it's jdk version
+    private String runtimeVersion;
+
+    private ProgramLanguage language;
+    private BuildManager buildManager;
 
     private String checksum;
     @Builder.Default

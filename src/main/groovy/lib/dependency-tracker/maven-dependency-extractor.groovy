@@ -944,7 +944,7 @@ class MavenDependencyManager {
         return result
     }
 
-    static void uploadDependency(String componentId, String branch, String sourceCodeUrl, List<PackageDependency> dependencies) {
+    static void uploadDependency(String compiler, String runtimeVersion, String componentId, String branch, String sourceCodeUrl, List<PackageDependency> dependencies) {
         // Get API URL from environment variable, fail if not set
         println "::debug::Pushing dependencies to Dependency Tracker API"
         def apiUrl = System.getenv('DEPENDENCY_TRACKER_API_URL')
@@ -959,27 +959,29 @@ class MavenDependencyManager {
             println "::warn::DEPENDENCY_TRACKER_API_TOKEN environment variable is not set"
             apiToken = ""
         }
-        
+
         // Extract name from sourceCodeUrl
         def name = extractNameFromSourceCodeUrl(sourceCodeUrl)
-        
+
         // Prepare the request payload
         def payload = [
-            component: [
-                name: name,
-                sourceCodeUrl: sourceCodeUrl,
+                component   : [
+                        name         : name,
+                        sourceCodeUrl: sourceCodeUrl,
+                        eimId        : '',
+                ],
+                componentId : componentId,
+                branch      : branch,
+                compiler    : compiler,
+                runtimeVersion: runtimeVersion,
                 language: 'JAVA',
-                eimId: '',
-                buildManager: 'MAVEN'
-            ],
-            componentId: componentId,
-            branch: branch,
-            dependencies: dependencies.collect { dep ->
-                [
-                        artefact: "${dep.groupId}:${dep.artifactId}",
-                        version : dep.currentValue
-                ]
-            }
+                buildManager: 'MAVEN',
+                dependencies: dependencies.collect { dep ->
+                    [
+                            artefact: "${dep.groupId}:${dep.artifactId}",
+                            version : dep.currentValue
+                    ]
+                }
         ]
 
         def maxRetries = 3
@@ -1044,23 +1046,23 @@ class MavenDependencyManager {
             }
         }
     }
-    
+
     static String extractComponentId(Node project) {
         // Get groupId (can be inherited from parent)
         def groupId = project.groupId.text() ?: project.parent.groupId.text()
-        
+
         // Get artifactId (must be defined in current POM)
         def artifactId = project.artifactId.text()
-        
+
         if (!groupId || !artifactId) {
             println "[ERROR] Missing required groupId or artifactId in POM"
             return null
         }
-        
+
         // Return in format groupId:artifactId
         return "${groupId}:${artifactId}"
     }
-    
+
     static String extractNameFromSourceCodeUrl(String sourceCodeUrl) {
         try {
             // Handle common Git repository URL patterns
@@ -1077,6 +1079,69 @@ class MavenDependencyManager {
             println "[WARN] Failed to extract name from sourceCodeUrl: ${sourceCodeUrl}"
             return 'unknown-component'
         }
+    }
+
+    static String extractRuntimeVersion(Node project) {
+        def version = null
+        
+        // 1. Check maven.compiler.source/target properties
+        def properties = project.properties[0]
+        if (properties) {
+            version = properties.'maven.compiler.source'.text() ?: 
+                    properties.'maven.compiler.target'.text() ?:
+                    properties.'java.version'.text()
+        }
+        
+        // 2. Check maven-compiler-plugin configuration
+        if (!version) {
+            project.build.plugins.plugin.each { plugin ->
+                if (plugin.groupId.text() == 'org.apache.maven.plugins' && 
+                    plugin.artifactId.text() == 'maven-compiler-plugin') {
+                    def config = plugin.configuration[0]
+                    if (config) {
+                        version = config.source.text() ?: config.target.text()
+                    }
+                }
+            }
+        }
+        
+        // 3. Check for Spring Boot parent
+        if (!version) {
+            def parent = project.parent[0]
+            if (parent && 
+                parent.groupId.text() == 'org.springframework.boot' && 
+                parent.artifactId.text() == 'spring-boot-starter-parent') {
+                // Spring Boot 3.x requires Java 17+
+                if (parent.version.text().startsWith('3.')) {
+                    version = '17'
+                }
+                // Spring Boot 2.x works with Java 8+
+                else if (parent.version.text().startsWith('2.')) {
+                    version = '8'
+                }
+            }
+        }
+        
+        // 4. Check for Java version in properties
+        if (!version) {
+            def javaVersion = project.properties.'java.version'.text()
+            if (javaVersion) {
+                version = javaVersion
+            }
+        }
+        
+        // Normalize version format
+        if (version) {
+            // Remove any '1.' prefix for Java 8
+            version = version.replaceAll('^1\\.', '')
+            // Remove any non-numeric characters
+            version = version.replaceAll('[^0-9]', '')
+            // Add 'JDK ' prefix
+            return "JDK ${version}"
+        }
+        
+        println "[WARN] Could not determine Java version from POM"
+        return "UNKNOWN"
     }
 }
 
@@ -1098,6 +1163,7 @@ static void main(String[] args) {
 
     def branch = args[1]
     def sourceCodeUrl = args[2]
+    def compiler = args[3]
 
     try {
         def content = pomFile.text
@@ -1109,9 +1175,11 @@ static void main(String[] args) {
 
         def componentId = MavenDependencyManager.extractComponentId(project)
 
+        def runtimeVersion = MavenDependencyManager.extractRuntimeVersion(project)
+
         def dependencies = MavenDependencyManager.extractDependencies(project)
 
-        MavenDependencyManager.uploadDependency(componentId, branch, sourceCodeUrl, dependencies)
+        MavenDependencyManager.uploadDependency(compiler, runtimeVersion, componentId, branch, sourceCodeUrl, dependencies)
 
         // Group dependencies by type for clear output
         def grouped = dependencies.groupBy { it.depType }

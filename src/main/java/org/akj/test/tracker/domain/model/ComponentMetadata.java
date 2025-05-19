@@ -15,8 +15,4 @@ public class ComponentMetadata {
     private String eimId;
 
     private String sourceCodeUrl;
-
-    private ProgramLanguage language;
-
-    private BuildManager buildManager;
 }

@@ -20,8 +20,6 @@ public interface ComponentAppMapstructMapper {
 
     @Mapping(source = "component.name", target = "metadata.name")
     @Mapping(source = "component.sourceCodeUrl", target = "metadata.sourceCodeUrl")
-    @Mapping(source = "component.language", target = "metadata.language")
-    @Mapping(source = "component.buildManager", target = "metadata.buildManager")
     @Mapping(source = "component.eimId", target = "metadata.eimId")
     ComponentAndDependency toDomain(ComponentAndDependencyDto componentAndDependencyDto);
 
@@ -33,8 +31,6 @@ public interface ComponentAppMapstructMapper {
 
     @Mapping(source = "metadata.name", target = "component.name")
     @Mapping(source = "metadata.sourceCodeUrl", target = "component.sourceCodeUrl")
-    @Mapping(source = "metadata.language", target = "component.language")
-    @Mapping(source = "metadata.buildManager", target = "component.buildManager")
     @Mapping(source = "metadata.eimId", target = "component.eimId")
     ComponentAndDependencyDto toDto(ComponentAndDependency componentAndDependency);
 

@@ -7,7 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.akj.test.tracker.application.dto.ComponentAndDependencyDto;
 import org.akj.test.tracker.application.dto.ComponentDto;
 import org.akj.test.tracker.application.service.ComponentService;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -47,6 +46,9 @@ public class ComponentApi {
         // TODO: Add proper deletion logic in service layer
         throw new UnsupportedOperationException("Not implemented yet");
     }
+
+//    @GetMapping
+//    public
 
     @PutMapping
     @Operation(

@@ -48,8 +48,6 @@ class ComponentServiceTest {
         domainObject.setMetadata(ComponentMetadata.builder()
                 .sourceCodeUrl("https://example.com/test-component")
                 .name("test-component")
-                .buildManager(BuildManager.PIP)
-                .language(ProgramLanguage.PYTHON)
                 .build());
         domainObject.setDependencies(List.of(
                 new Dependency("dep1", "1.0.0"),
@@ -83,8 +81,6 @@ class ComponentServiceTest {
         existing.setMetadata(ComponentMetadata.builder()
                 .sourceCodeUrl("https://example.com/test-component")
                 .name("test-component")
-                .buildManager(BuildManager.PIP)
-                .language(ProgramLanguage.PYTHON)
                 .build());
         existing.setDependencies(List.of(
                 new Dependency("dep1", "1.0.0"),
@@ -107,8 +103,6 @@ class ComponentServiceTest {
         ComponentAndDependencyDto testDto = new ComponentAndDependencyDto();
         ComponentDto componentDto = new ComponentDto();
         testDto.setBranch("main");
-        componentDto.setLanguage(ProgramLanguage.PYTHON);
-        componentDto.setBuildManager(BuildManager.PIP);
         componentDto.setSourceCodeUrl("https://example.com/test-component");
         testDto.setComponentId("test-package-info");
         testDto.setComponent(componentDto);
@@ -134,8 +128,6 @@ class ComponentServiceTest {
         existing.setMetadata(ComponentMetadata.builder()
                 .sourceCodeUrl("https://example.com/test-component")
                 .name("test-component")
-                .buildManager(BuildManager.PIP)
-                .language(ProgramLanguage.PYTHON)
                 .build());
         existing.setDependencies(List.of(
                 new Dependency("dep1", "1.0.1"),
