@@ -23,6 +23,8 @@ public interface ComponentAppMapstructMapper {
     @Mapping(source = "component.eimId", target = "metadata.eimId")
     ComponentAndDependency toDomain(ComponentAndDependencyDto componentAndDependencyDto);
 
+
+    @Mapping(source="type", target = "type")
     Dependency toDomain(DependencyDto dependencyDto);
 
     List<Dependency> toDomainList(List<DependencyDto> dependencyDtos);

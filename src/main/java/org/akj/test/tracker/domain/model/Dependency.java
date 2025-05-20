@@ -9,7 +9,7 @@ import java.io.Serializable;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@JsonPropertyOrder({"artefact", "version"})
+@JsonPropertyOrder({"artefact", "version", "type"})
 @EqualsAndHashCode
 public class Dependency implements Serializable {
     // for maven, it's value is groupId:artifactId

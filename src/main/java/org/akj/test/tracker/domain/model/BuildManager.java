@@ -5,7 +5,11 @@ public enum BuildManager {
     GRADLE("gradle"),
     NPM("npm"),
     YARN("yarn"),
-    PIP("pip");
+    PIP("pip"),
+    VITE("vite"),
+    NEXT("next"),
+    CRA("cra"),
+    PNPM("pnpm");
 
     private final String name;
 

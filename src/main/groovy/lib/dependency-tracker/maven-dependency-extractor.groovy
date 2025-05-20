@@ -243,8 +243,8 @@ class MavenDependencyManager {
         try {
             def connection = new URL(url).openConnection()
             connection.setRequestProperty('User-Agent', 'Maven/3.8.1')
-            connection.connectTimeout = 5000
-            connection.readTimeout = 5000
+            connection.connectTimeout = 60000
+            connection.readTimeout = 60000
 
             if (connection.responseCode == 200) {
                 def inputStream = connection.inputStream
