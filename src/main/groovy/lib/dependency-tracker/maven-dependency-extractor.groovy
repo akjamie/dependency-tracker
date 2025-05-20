@@ -4,11 +4,11 @@ import groovy.xml.XmlParser
 
 class MavenDependencyManager {
     static final List<String> SUPPORTED_NAMESPACES = ['http://maven.apache.org/SETTINGS/1.0.0',
-                                                      'http://maven.apache.org/SETTINGS/1.1.0',
+            'http://maven.apache.org/SETTINGS/1.1.0',
                                                       'http://maven.apache.org/SETTINGS/1.2.0']
 
     static final List<String> SUPPORTED_EXTENSIONS_NAMESPACES = ['http://maven.apache.org/EXTENSIONS/1.0.0',
-                                                                 'http://maven.apache.org/EXTENSIONS/1.1.0',
+            'http://maven.apache.org/EXTENSIONS/1.1.0',
                                                                  'http://maven.apache.org/EXTENSIONS/1.2.0']
 
     static final String MAVEN_CENTRAL = "https://repo.maven.apache.org/maven2"
@@ -78,14 +78,14 @@ class MavenDependencyManager {
         def propertiesNode = project.properties[0]
         if (propertiesNode) {
             propertiesNode.children().each { prop ->
-                if (prop.text()) {
+            if (prop.text()) {
                     // Strip namespace prefix from property name
                     def propName = prop.name().localPart
                     props[propName] = prop.text().trim()
                 }
             }
         }
-
+        
         // Extract properties from parent POM if available
         def parent = project.parent[0]
         if (parent) {
@@ -135,7 +135,7 @@ class MavenDependencyManager {
         // Add common Maven properties
         props['project.build.sourceEncoding'] = props['project.build.sourceEncoding'] ?: 'UTF-8'
         props['project.reporting.outputEncoding'] = props['project.reporting.outputEncoding'] ?: 'UTF-8'
-
+        
         return props
     }
 
@@ -409,8 +409,8 @@ class MavenDependencyManager {
                 def groupId = resolveProperty(dep.groupId.text(), context.properties)
                 def artifactId = resolveProperty(dep.artifactId.text(), context.properties)
                 def explicitVersion = dep.version.text()
-                def scope = dep.scope.text() ?: 'compile'
-
+            def scope = dep.scope.text() ?: 'compile'
+            
                 println "[DEBUG] Processing dependency: ${groupId}:${artifactId}"
                 println "[DEBUG] Explicit version from POM: ${explicitVersion}"
 
@@ -418,18 +418,18 @@ class MavenDependencyManager {
                 def version = context.resolveVersion(groupId, artifactId, explicitVersion)
 
                 def dependency = new PackageDependency(groupId: groupId,
-                        artifactId: artifactId,
-                        currentValue: version,
+                    artifactId: artifactId,
+                    currentValue: version,
                         depType: scope)
 
-                // Handle optional dependencies
-                if (dep.optional.text() == 'true') {
-                    dependency.depType = 'optional'
-                }
+            // Handle optional dependencies
+            if (dep.optional.text() == 'true') {
+                dependency.depType = 'optional'
+            }
 
                 if (dependency.groupId && dependency.artifactId) {
-                    println "[INFO] Found dependency: ${dependency}"
-                    dependencies << dependency
+                println "[INFO] Found dependency: ${dependency}"
+                dependencies << dependency
                 } else {
                     println "[WARN] Skipping dependency due to missing groupId or artifactId: ${groupId}:${artifactId}"
                 }
@@ -450,18 +450,18 @@ class MavenDependencyManager {
                     def version = context.resolveVersion(groupId, artifactId, explicitVersion)
 
                     def dependency = new PackageDependency(groupId: groupId,
-                            artifactId: artifactId,
-                            currentValue: version,
+                    artifactId: artifactId,
+                    currentValue: version,
                             depType: 'build')
 
                     if (dependency.artifactId) {
-                        println "[INFO] Found plugin: ${dependency}"
-                        dependencies << dependency
-                    }
-                }
+                println "[INFO] Found plugin: ${dependency}"
+                dependencies << dependency
             }
         }
-
+            }
+        }
+        
         return dependencies
     }
 
@@ -709,7 +709,7 @@ class MavenDependencyManager {
                 // Process parent if exists and not visited
                 if (pkg.parent && !visitedPackages.contains(pkg.parent)) {
                     visitedPackages << pkg.parent
-
+                    
                     // Load parent package if not already loaded
                     if (!extractedPackages.containsKey(pkg.parent)) {
                         try {
@@ -728,7 +728,7 @@ class MavenDependencyManager {
                             println "[ERROR] Failed to load parent POM: ${e.message}"
                         }
                     }
-
+                    
                     pkg = extractedPackages[pkg.parent]
                 } else {
                     pkg = null
@@ -736,7 +736,7 @@ class MavenDependencyManager {
             }
 
             // Merge properties with parent chain
-            extractedProps[name] = propsHierarchy.inject([:]) { acc, val ->
+            extractedProps[name] = propsHierarchy.inject([:]) { acc, val -> 
                 // Add reference to parent properties for nested resolution
                 val._parentProps = acc
                 // Merge properties, child properties override parent
@@ -859,14 +859,14 @@ class MavenDependencyManager {
 
         // Process parents to resolve inheritance
         def result = cleanResult(resolveParents(packages))
-
+        
         // After resolving parents, print debug info
         result.each { pkgFile ->
             println "[DEBUG] Final package: ${pkgFile.packageFile}"
             pkgFile.deps.each { dep -> println "[DEBUG] Final dependency: ${dep}"
             }
         }
-
+        
         return result
     }
 
