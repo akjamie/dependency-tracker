@@ -36,8 +36,8 @@ public class DependencySearchApi {
     }
 
     @GetMapping("/facets/versions")
-    public VersionPatternFacet getVersionPatternFacet() {
-        return dependencySearchService.getVersionPatternFacet();
+    public VersionDistributionFacet getVersionDistributionFacet() {
+        return dependencySearchService.getVersionDistributionFacet();
     }
 
     @GetMapping("/facets/frameworks")

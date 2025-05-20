@@ -21,6 +21,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.HashMap;
+import java.util.function.Function;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 
 @Service
 @Slf4j
@@ -391,6 +395,139 @@ public class DependencySearchService {
         } catch (Exception e) {
             log.error("Error getting component activity facet from collection {}: {}", COLLECTION_NAME, e.getMessage(), e);
             return new ComponentActivityFacet();
+        }
+    }
+
+    public VersionDistributionFacet getVersionDistributionFacet() {
+        try {
+            // Validate collection exists and has data
+            long totalComponents = mongoTemplate.getCollection(COLLECTION_NAME).countDocuments();
+            log.info("Found {} documents in collection {}", totalComponents, COLLECTION_NAME);
+
+            if (totalComponents == 0) {
+                log.warn("Collection {} is empty", COLLECTION_NAME);
+                return new VersionDistributionFacet();
+            }
+
+            // Aggregate runtime versions
+            Aggregation runtimeVersionAgg = Aggregation.newAggregation(
+                Aggregation.group("runtimeVersion")
+                    .count().as("count")
+                    .addToSet("componentId").as("componentIds")
+                    .push("buildManager").as("buildManagers")
+            );
+
+            // Aggregate Spring Boot versions
+            Aggregation springBootAgg = Aggregation.newAggregation(
+                Aggregation.unwind("dependencies"),
+                Aggregation.match(Criteria.where("dependencies.artefact").regex("^org\\.springframework\\.boot")),
+                Aggregation.group("dependencies.version")
+                    .count().as("count")
+                    .addToSet("componentId").as("componentIds")
+                    .push("dependencies.type").as("types")
+                    .push("dependencies.artefact").as("artefacts")
+            );
+
+            // Execute aggregations
+            List<Document> runtimeResults = mongoTemplate.aggregate(runtimeVersionAgg, COLLECTION_NAME, Document.class).getMappedResults();
+            List<Document> springBootResults = mongoTemplate.aggregate(springBootAgg, COLLECTION_NAME, Document.class).getMappedResults();
+
+            log.debug("Runtime version results: {}", runtimeResults);
+            log.debug("Spring Boot version results: {}", springBootResults);
+
+            // Build response
+            VersionDistributionFacet facet = new VersionDistributionFacet();
+            
+            // Set metadata
+            VersionDistributionFacet.Metadata metadata = new VersionDistributionFacet.Metadata();
+            metadata.setLastUpdated(DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
+            metadata.setTotalComponents(totalComponents);
+            facet.setMetadata(metadata);
+            
+            // Process runtime versions
+            Map<String, VersionDistributionFacet.VersionInfo> javaVersions = new HashMap<>();
+            Map<String, VersionDistributionFacet.VersionInfo> pythonVersions = new HashMap<>();
+            Map<String, VersionDistributionFacet.VersionInfo> nodeVersions = new HashMap<>();
+            
+            for (Document doc : runtimeResults) {
+                String version = doc.get("_id").toString();
+                VersionDistributionFacet.VersionInfo info = new VersionDistributionFacet.VersionInfo();
+                long count = ((Number) doc.get("count")).longValue();
+                info.setCount(count);
+                info.setPercentage((double) count / totalComponents * 100);
+                
+                // Handle componentIds
+                List<?> componentIds = (List<?>) doc.get("componentIds");
+                info.setComponentIds(componentIds.stream()
+                    .map(Object::toString)
+                    .collect(Collectors.toList()));
+                
+                // Handle build managers
+                List<?> buildManagers = (List<?>) doc.get("buildManagers");
+                Map<String, Long> buildManagerCount = buildManagers.stream()
+                    .map(Object::toString)
+                    .collect(Collectors.groupingBy(
+                        Function.identity(),
+                        Collectors.counting()
+                    ));
+                info.setDependencyTypes(buildManagerCount);
+                
+                // Categorize by runtime type
+                if (version.toLowerCase().contains("jdk") || version.toLowerCase().contains("java")) {
+                    javaVersions.put(version, info);
+                } else if (version.toLowerCase().contains("python")) {
+                    pythonVersions.put(version, info);
+                } else if (version.toLowerCase().contains("node")) {
+                    nodeVersions.put(version, info);
+                }
+            }
+            
+            // Process Spring Boot versions
+            Map<String, VersionDistributionFacet.VersionInfo> springBootVersions = new HashMap<>();
+            for (Document doc : springBootResults) {
+                String version = doc.get("_id").toString();
+                VersionDistributionFacet.VersionInfo info = new VersionDistributionFacet.VersionInfo();
+                long count = ((Number) doc.get("count")).longValue();
+                info.setCount(count);
+                info.setPercentage((double) count / totalComponents * 100);
+                
+                // Handle componentIds
+                List<?> componentIds = (List<?>) doc.get("componentIds");
+                info.setComponentIds(componentIds.stream()
+                    .map(Object::toString)
+                    .collect(Collectors.toList()));
+                
+                // Handle dependency types and artefacts
+                List<?> types = (List<?>) doc.get("types");
+                List<?> artefacts = (List<?>) doc.get("artefacts");
+                Map<String, Long> typeCount = new HashMap<>();
+                
+                for (int i = 0; i < types.size(); i++) {
+                    String type = types.get(i).toString();
+                    String artefact = artefacts.get(i).toString();
+                    String key = artefact.contains("spring-boot-starter") ? "spring-boot-starter" :
+                               artefact.contains("spring-boot-actuator") ? "spring-boot-actuator" :
+                               artefact.contains("spring-boot-test") ? "spring-boot-test" : type;
+                    typeCount.merge(key, 1L, Long::sum);
+                }
+                info.setDependencyTypes(typeCount);
+                
+                // Set latest version info for Spring Boot
+                info.setLatestVersion("3.2.3"); // Current latest version
+                info.setIsLatest(version.equals("3.2.3"));
+                
+                springBootVersions.put(version, info);
+            }
+
+            facet.setJavaVersions(javaVersions);
+            facet.setPythonVersions(pythonVersions);
+            facet.setNodeVersions(nodeVersions);
+            facet.setSpringBootVersions(springBootVersions);
+            
+            return facet;
+        } catch (Exception e) {
+            log.error("Error getting version distribution facet from collection {}: {}", COLLECTION_NAME, e.getMessage(), e);
+            return new VersionDistributionFacet();
         }
     }
 }
