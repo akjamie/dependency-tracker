@@ -11,6 +11,9 @@ public class VersionDistributionFacet {
     private Map<String, VersionInfo> pythonVersions;
     private Map<String, VersionInfo> nodeVersions;
     private Map<String, VersionInfo> springBootVersions;
+    private Map<String, VersionInfo> reactVersions;
+    private Map<String, VersionInfo> angularVersions;
+    private Map<String, VersionInfo> vueVersions;
     
     @Data
     public static class Metadata {
@@ -24,7 +27,5 @@ public class VersionDistributionFacet {
         private Double percentage;
         private List<String> componentIds;
         private Map<String, Long> dependencyTypes;
-        private String latestVersion;  // For Spring Boot only
-        private Boolean isLatest;      // For Spring Boot only
     }
 } 

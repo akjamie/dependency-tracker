@@ -17,14 +17,14 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.HashMap;
+import java.util.Objects;
 import java.util.function.Function;
-import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -202,138 +202,6 @@ public class DependencySearchService {
         }
     }
 
-    public DependencyTypeFacet getDependencyTypeFacet() {
-        try {
-            // Validate collection exists and has data
-            long count = mongoTemplate.getCollection(COLLECTION_NAME).countDocuments();
-            if (count == 0) {
-                log.warn("Collection {} is empty", COLLECTION_NAME);
-                return new DependencyTypeFacet();
-            }
-
-            // Aggregate dependency types
-            Aggregation typeAgg = Aggregation.newAggregation(
-                    Aggregation.unwind("dependencies"),
-                    Aggregation.group("dependencies.type")
-                            .count().as("count")
-            );
-
-            // Aggregate dependencies by language
-            Aggregation languageAgg = Aggregation.newAggregation(
-                    Aggregation.unwind("dependencies"),
-                    Aggregation.group("language", "dependencies.type")
-                            .count().as("count")
-            );
-
-            // Execute aggregations
-            List<Document> typeResults = mongoTemplate.aggregate(typeAgg, COLLECTION_NAME, Document.class).getMappedResults();
-            List<Document> languageResults = mongoTemplate.aggregate(languageAgg, COLLECTION_NAME, Document.class).getMappedResults();
-
-            log.debug("Type results: {}", typeResults);
-            log.debug("Language results: {}", languageResults);
-
-            // Build facet response
-            DependencyTypeFacet facet = new DependencyTypeFacet();
-            facet.setDependencyTypeDistribution(convertToMap(typeResults));
-            facet.setDependenciesByLanguage(convertToMap(languageResults));
-
-            return facet;
-        } catch (Exception e) {
-            log.error("Error getting dependency type facet from collection {}: {}", COLLECTION_NAME, e.getMessage(), e);
-            return new DependencyTypeFacet();
-        }
-    }
-
-    public VersionPatternFacet getVersionPatternFacet() {
-        try {
-            // Validate collection exists and has data
-            long count = mongoTemplate.getCollection(COLLECTION_NAME).countDocuments();
-            if (count == 0) {
-                log.warn("Collection {} is empty", COLLECTION_NAME);
-                return new VersionPatternFacet();
-            }
-
-            // Aggregate version patterns
-            Aggregation versionAgg = Aggregation.newAggregation(
-                    Aggregation.unwind("dependencies"),
-                    Aggregation.group("dependencies.version")
-                            .count().as("count")
-            );
-
-            // Aggregate major versions
-            Aggregation majorVersionAgg = Aggregation.newAggregation(
-                    Aggregation.unwind("dependencies"),
-                    Aggregation.project()
-                            .andExpression("dependencies.version").as("majorVersion"),
-                    Aggregation.match(Criteria.where("majorVersion").regex("^\\d+")),
-                    Aggregation.group("majorVersion")
-                            .count().as("count")
-            );
-
-            // Execute aggregations
-            List<Document> versionResults = mongoTemplate.aggregate(versionAgg, COLLECTION_NAME, Document.class).getMappedResults();
-            List<Document> majorVersionResults = mongoTemplate.aggregate(majorVersionAgg, COLLECTION_NAME, Document.class).getMappedResults();
-
-            log.debug("Version results: {}", versionResults);
-            log.debug("Major version results: {}", majorVersionResults);
-
-            // Build facet response
-            VersionPatternFacet facet = new VersionPatternFacet();
-            facet.setVersionPatternDistribution(convertToMap(versionResults));
-            facet.setMajorVersionDistribution(convertToMap(majorVersionResults));
-
-            return facet;
-        } catch (Exception e) {
-            log.error("Error getting version pattern facet from collection {}: {}", COLLECTION_NAME, e.getMessage(), e);
-            return new VersionPatternFacet();
-        }
-    }
-
-    public FrameworkUsageFacet getFrameworkUsageFacet() {
-        try {
-            // Validate collection exists and has data
-            long count = mongoTemplate.getCollection(COLLECTION_NAME).countDocuments();
-            log.info("Found {} documents in collection {}", count, COLLECTION_NAME);
-
-            if (count == 0) {
-                log.warn("Collection {} is empty", COLLECTION_NAME);
-                return new FrameworkUsageFacet();
-            }
-
-            // Aggregate Spring Boot usage
-            Aggregation springBootAgg = Aggregation.newAggregation(
-                    Aggregation.unwind("dependencies"),
-                    Aggregation.match(Criteria.where("dependencies.artefact").regex("^org\\.springframework\\.boot")),
-                    Aggregation.group("dependencies.artefact")
-                            .count().as("count")
-            );
-
-            // Aggregate React usage
-            Aggregation reactAgg = Aggregation.newAggregation(
-                    Aggregation.unwind("dependencies"),
-                    Aggregation.match(Criteria.where("dependencies.artefact").regex("^react")),
-                    Aggregation.group("dependencies.artefact")
-                            .count().as("count")
-            );
-
-            // Execute aggregations
-            List<Document> springBootResults = mongoTemplate.aggregate(springBootAgg, COLLECTION_NAME, Document.class).getMappedResults();
-            List<Document> reactResults = mongoTemplate.aggregate(reactAgg, COLLECTION_NAME, Document.class).getMappedResults();
-
-            log.debug("Spring Boot results: {}", springBootResults);
-            log.debug("React results: {}", reactResults);
-
-            // Build facet response
-            FrameworkUsageFacet facet = new FrameworkUsageFacet();
-            facet.setSpringBootUsage(convertToMap(springBootResults));
-            facet.setReactUsage(convertToMap(reactResults));
-
-            return facet;
-        } catch (Exception e) {
-            log.error("Error getting framework usage facet from collection {}: {}", COLLECTION_NAME, e.getMessage(), e);
-            return new FrameworkUsageFacet();
-        }
-    }
 
     public ComponentActivityFacet getComponentActivityFacet() {
         try {
@@ -370,7 +238,7 @@ public class DependencySearchService {
 
             // Build facet response
             ComponentActivityFacet facet = new ComponentActivityFacet();
-            
+
             // Convert type results
             Map<String, Long> componentTypes = new HashMap<>();
             for (Document doc : typeResults) {
@@ -379,7 +247,7 @@ public class DependencySearchService {
                 Long value = ((Number) doc.get("count")).longValue();
                 componentTypes.put(key, value);
             }
-            
+
             // Convert dependency count results
             Map<String, Long> dependencyCount = new HashMap<>();
             for (Document doc : depCountResults) {
@@ -411,67 +279,125 @@ public class DependencySearchService {
 
             // Aggregate runtime versions
             Aggregation runtimeVersionAgg = Aggregation.newAggregation(
-                Aggregation.group("runtimeVersion")
-                    .count().as("count")
-                    .addToSet("componentId").as("componentIds")
-                    .push("buildManager").as("buildManagers")
+                    Aggregation.group("runtimeVersion")
+                            .count().as("count")
+                            .addToSet("componentId").as("componentIds")
+                            .push("buildManager").as("buildManagers")
             );
 
             // Aggregate Spring Boot versions
             Aggregation springBootAgg = Aggregation.newAggregation(
-                Aggregation.unwind("dependencies"),
-                Aggregation.match(Criteria.where("dependencies.artefact").regex("^org\\.springframework\\.boot")),
-                Aggregation.group("dependencies.version")
-                    .count().as("count")
-                    .addToSet("componentId").as("componentIds")
-                    .push("dependencies.type").as("types")
-                    .push("dependencies.artefact").as("artefacts")
+                    Aggregation.unwind("dependencies"),
+                    Aggregation.match(Criteria.where("dependencies.artefact").regex("^org\\.springframework\\.boot")),
+                    Aggregation.group("dependencies.version")
+                            .count().as("count")
+                            .addToSet("componentId").as("componentIds")
+                            .push("dependencies.type").as("types")
+                            .push("dependencies.artefact").as("artefacts")
+            );
+
+            // Aggregate frontend frameworks
+            Aggregation frontendAgg = Aggregation.newAggregation(
+                    Aggregation.unwind("dependencies"),
+                    Aggregation.match(Criteria.where("dependencies.artefact").in(
+                            "react", "react-dom", "angular", "vue"
+                    )),
+                    Aggregation.group("dependencies.artefact", "dependencies.version")
+                            .count().as("count")
+                            .addToSet("componentId").as("componentIds")
+                            .push("dependencies.type").as("types")
             );
 
             // Execute aggregations
             List<Document> runtimeResults = mongoTemplate.aggregate(runtimeVersionAgg, COLLECTION_NAME, Document.class).getMappedResults();
             List<Document> springBootResults = mongoTemplate.aggregate(springBootAgg, COLLECTION_NAME, Document.class).getMappedResults();
-
-            log.debug("Runtime version results: {}", runtimeResults);
-            log.debug("Spring Boot version results: {}", springBootResults);
+            List<Document> frontendResults = mongoTemplate.aggregate(frontendAgg, COLLECTION_NAME, Document.class).getMappedResults();
 
             // Build response
             VersionDistributionFacet facet = new VersionDistributionFacet();
-            
+
             // Set metadata
             VersionDistributionFacet.Metadata metadata = new VersionDistributionFacet.Metadata();
             metadata.setLastUpdated(DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
             metadata.setTotalComponents(totalComponents);
             facet.setMetadata(metadata);
-            
-            // Process runtime versions
+
+            // Initialize version maps
             Map<String, VersionDistributionFacet.VersionInfo> javaVersions = new HashMap<>();
             Map<String, VersionDistributionFacet.VersionInfo> pythonVersions = new HashMap<>();
             Map<String, VersionDistributionFacet.VersionInfo> nodeVersions = new HashMap<>();
-            
+            Map<String, VersionDistributionFacet.VersionInfo> springBootVersions = new HashMap<>();
+            Map<String, VersionDistributionFacet.VersionInfo> reactVersions = new HashMap<>();
+            Map<String, VersionDistributionFacet.VersionInfo> angularVersions = new HashMap<>();
+            Map<String, VersionDistributionFacet.VersionInfo> vueVersions = new HashMap<>();
+
+            // Calculate total count for each runtime type
+            long totalJavaCount = 0;
+            long totalPythonCount = 0;
+            long totalNodeCount = 0;
+
             for (Document doc : runtimeResults) {
-                String version = doc.get("_id").toString();
+                Object id = doc.get("_id");
+                if (id == null) {
+                    log.warn("Found document with null _id in runtime results");
+                    continue;
+                }
+
+                String version = id.toString();
+                long count = ((Number) doc.get("count")).longValue();
+
+                if (version.toLowerCase().contains("jdk") || version.toLowerCase().contains("java")) {
+                    totalJavaCount += count;
+                } else if (version.toLowerCase().contains("python")) {
+                    totalPythonCount += count;
+                } else if (version.toLowerCase().contains("node")) {
+                    totalNodeCount += count;
+                }
+            }
+
+            // Process runtime versions with correct percentages
+            for (Document doc : runtimeResults) {
+                Object id = doc.get("_id");
+                if (id == null) {
+                    continue;
+                }
+
+                String version = id.toString();
                 VersionDistributionFacet.VersionInfo info = new VersionDistributionFacet.VersionInfo();
                 long count = ((Number) doc.get("count")).longValue();
                 info.setCount(count);
-                info.setPercentage((double) count / totalComponents * 100);
-                
+
+                // Set percentage based on runtime type
+                if (version.toLowerCase().contains("jdk") || version.toLowerCase().contains("java")) {
+                    info.setPercentage(totalJavaCount > 0 ? (double) count / totalJavaCount * 100 : 0);
+                } else if (version.toLowerCase().contains("python")) {
+                    info.setPercentage(totalPythonCount > 0 ? (double) count / totalPythonCount * 100 : 0);
+                } else if (version.toLowerCase().contains("node")) {
+                    info.setPercentage(totalNodeCount > 0 ? (double) count / totalNodeCount * 100 : 0);
+                }
+
                 // Handle componentIds
                 List<?> componentIds = (List<?>) doc.get("componentIds");
-                info.setComponentIds(componentIds.stream()
-                    .map(Object::toString)
-                    .collect(Collectors.toList()));
-                
+                if (componentIds != null) {
+                    info.setComponentIds(componentIds.stream()
+                            .filter(Objects::nonNull)
+                            .map(Object::toString)
+                            .collect(Collectors.toList()));
+                }
+
                 // Handle build managers
                 List<?> buildManagers = (List<?>) doc.get("buildManagers");
-                Map<String, Long> buildManagerCount = buildManagers.stream()
-                    .map(Object::toString)
-                    .collect(Collectors.groupingBy(
-                        Function.identity(),
-                        Collectors.counting()
-                    ));
-                info.setDependencyTypes(buildManagerCount);
-                
+                if (buildManagers != null) {
+                    Map<String, Long> buildManagerCount = buildManagers.stream()
+                            .filter(Objects::nonNull)
+                            .map(Object::toString)
+                            .collect(Collectors.groupingBy(
+                                    Function.identity(),
+                                    Collectors.counting()
+                            ));
+                    info.setDependencyTypes(buildManagerCount);
+                }
+
                 // Categorize by runtime type
                 if (version.toLowerCase().contains("jdk") || version.toLowerCase().contains("java")) {
                     javaVersions.put(version, info);
@@ -481,49 +407,145 @@ public class DependencySearchService {
                     nodeVersions.put(version, info);
                 }
             }
-            
-            // Process Spring Boot versions
-            Map<String, VersionDistributionFacet.VersionInfo> springBootVersions = new HashMap<>();
+
+            // Calculate total count for Spring Boot versions
+            long totalSpringBootCount = springBootResults.stream()
+                    .mapToLong(doc -> ((Number) doc.get("count")).longValue())
+                    .sum();
+
+            // Process Spring Boot versions with correct percentages
             for (Document doc : springBootResults) {
-                String version = doc.get("_id").toString();
+                Object id = doc.get("_id");
+                if (id == null) {
+                    continue;
+                }
+
+                String version = id.toString();
                 VersionDistributionFacet.VersionInfo info = new VersionDistributionFacet.VersionInfo();
                 long count = ((Number) doc.get("count")).longValue();
                 info.setCount(count);
-                info.setPercentage((double) count / totalComponents * 100);
-                
+                info.setPercentage(totalSpringBootCount > 0 ? (double) count / totalSpringBootCount * 100 : 0);
+
                 // Handle componentIds
                 List<?> componentIds = (List<?>) doc.get("componentIds");
-                info.setComponentIds(componentIds.stream()
-                    .map(Object::toString)
-                    .collect(Collectors.toList()));
-                
+                if (componentIds != null) {
+                    info.setComponentIds(componentIds.stream()
+                            .filter(Objects::nonNull)
+                            .map(Object::toString)
+                            .collect(Collectors.toList()));
+                }
+
                 // Handle dependency types and artefacts
                 List<?> types = (List<?>) doc.get("types");
                 List<?> artefacts = (List<?>) doc.get("artefacts");
-                Map<String, Long> typeCount = new HashMap<>();
-                
-                for (int i = 0; i < types.size(); i++) {
-                    String type = types.get(i).toString();
-                    String artefact = artefacts.get(i).toString();
-                    String key = artefact.contains("spring-boot-starter") ? "spring-boot-starter" :
-                               artefact.contains("spring-boot-actuator") ? "spring-boot-actuator" :
-                               artefact.contains("spring-boot-test") ? "spring-boot-test" : type;
-                    typeCount.merge(key, 1L, Long::sum);
+                if (types != null && artefacts != null && types.size() == artefacts.size()) {
+                    Map<String, Long> typeCount = new HashMap<>();
+                    for (int i = 0; i < types.size(); i++) {
+                        Object type = types.get(i);
+                        Object artefact = artefacts.get(i);
+                        if (type != null && artefact != null) {
+                            String typeStr = type.toString();
+                            String artefactStr = artefact.toString();
+                            String key = artefactStr.contains("spring-boot-starter") ? "spring-boot-starter" :
+                                    artefactStr.contains("spring-boot-actuator") ? "spring-boot-actuator" :
+                                            artefactStr.contains("spring-boot-test") ? "spring-boot-test" : typeStr;
+                            typeCount.merge(key, 1L, Long::sum);
+                        }
+                    }
+                    info.setDependencyTypes(typeCount);
                 }
-                info.setDependencyTypes(typeCount);
-                
-                // Set latest version info for Spring Boot
-                info.setLatestVersion("3.2.3"); // Current latest version
-                info.setIsLatest(version.equals("3.2.3"));
-                
+
                 springBootVersions.put(version, info);
             }
 
+            // Calculate total counts for frontend frameworks
+            Map<String, Long> totalFrontendCounts = new HashMap<>();
+            for (Document doc : frontendResults) {
+                Object id = doc.get("_id");
+                if (id == null) {
+                    continue;
+                }
+
+                Document idDoc = (Document) id;
+                String framework = idDoc.getString("dependencies.artefact");
+                if (framework == null) {
+                    continue;
+                }
+
+                long count = ((Number) doc.get("count")).longValue();
+                totalFrontendCounts.merge(framework, count, Long::sum);
+            }
+
+            // Process frontend framework versions with correct percentages
+            for (Document doc : frontendResults) {
+                Object id = doc.get("_id");
+                if (id == null) {
+                    continue;
+                }
+
+                Document idDoc = (Document) id;
+                String framework = idDoc.getString("dependencies.artefact");
+                String version = idDoc.getString("dependencies.version");
+
+                if (framework == null || version == null) {
+                    continue;
+                }
+
+                VersionDistributionFacet.VersionInfo info = new VersionDistributionFacet.VersionInfo();
+                long count = ((Number) doc.get("count")).longValue();
+                info.setCount(count);
+
+                // Set percentage based on framework type
+                Long totalFrameworkCount = totalFrontendCounts.get(framework);
+                info.setPercentage(totalFrameworkCount != null && totalFrameworkCount > 0 ?
+                        (double) count / totalFrameworkCount * 100 : 0);
+
+                // Handle componentIds
+                List<?> componentIds = (List<?>) doc.get("componentIds");
+                if (componentIds != null) {
+                    info.setComponentIds(componentIds.stream()
+                            .filter(Objects::nonNull)
+                            .map(Object::toString)
+                            .collect(Collectors.toList()));
+                }
+
+                // Handle dependency types
+                List<?> types = (List<?>) doc.get("types");
+                if (types != null) {
+                    Map<String, Long> typeCount = types.stream()
+                            .filter(Objects::nonNull)
+                            .map(Object::toString)
+                            .collect(Collectors.groupingBy(
+                                    Function.identity(),
+                                    Collectors.counting()
+                            ));
+                    info.setDependencyTypes(typeCount);
+                }
+
+                // Categorize by framework
+                switch (framework) {
+                    case "react":
+                    case "react-dom":
+                        reactVersions.put(version, info);
+                        break;
+                    case "angular":
+                        angularVersions.put(version, info);
+                        break;
+                    case "vue":
+                        vueVersions.put(version, info);
+                        break;
+                }
+            }
+
+            // Set all version maps
             facet.setJavaVersions(javaVersions);
             facet.setPythonVersions(pythonVersions);
             facet.setNodeVersions(nodeVersions);
             facet.setSpringBootVersions(springBootVersions);
-            
+            facet.setReactVersions(reactVersions);
+            facet.setAngularVersions(angularVersions);
+            facet.setVueVersions(vueVersions);
+
             return facet;
         } catch (Exception e) {
             log.error("Error getting version distribution facet from collection {}: {}", COLLECTION_NAME, e.getMessage(), e);

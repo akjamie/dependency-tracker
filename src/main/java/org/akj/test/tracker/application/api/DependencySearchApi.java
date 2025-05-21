@@ -40,11 +40,6 @@ public class DependencySearchApi {
         return dependencySearchService.getVersionDistributionFacet();
     }
 
-    @GetMapping("/facets/frameworks")
-    public FrameworkUsageFacet getFrameworkUsageFacet() {
-        return dependencySearchService.getFrameworkUsageFacet();
-    }
-
     @GetMapping("/facets/activity")
     public ComponentActivityFacet getComponentActivityFacet() {
         return dependencySearchService.getComponentActivityFacet();
