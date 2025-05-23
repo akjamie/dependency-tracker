@@ -95,22 +95,22 @@ class ReactDependencyExtractor {
 
         // Check engines field
         if (packageJson.engines?.node) {
-            runtime << "Node.js ${packageJson.engines.node}"
+            runtime << "${packageJson.engines.node}"
         }
 
         // Check for .nvmrc
         def nvmrcFile = new File(packageJsonFile.parent, ".nvmrc")
         if (nvmrcFile.exists()) {
-            runtime << "Node.js ${nvmrcFile.text.trim()}"
+            runtime << "${nvmrcFile.text.trim()}"
         }
 
         // Check for .node-version
         def nodeVersionFile = new File(packageJsonFile.parent, ".node-version")
         if (nodeVersionFile.exists()) {
-            runtime << "Node.js ${nodeVersionFile.text.trim()}"
+            runtime << "${nodeVersionFile.text.trim()}"
         }
 
-        return runtime.join(', ') ?: "Node.js"
+        return runtime.join(', ') ?: "UNKNOWN"
     }
 
     static List<Dependency> extractDependencies(Map packageJson) {
@@ -248,7 +248,10 @@ class ReactDependencyExtractor {
                 componentId   : componentId,
                 branch        : branch,
                 compiler      : compiler,
-                runtimeVersion: runtimeVersion,
+                runtimeInfo: [
+                        version: runtimeVersion,
+                        type      : "NODE_JS"
+                ],
                 language      : framework,
                 buildManager  : buildManager,
                 dependencies  : dependencies.collect { dep ->
@@ -358,6 +361,11 @@ class ReactDependencyExtractor {
             def runtimeVersion = result.runtimeVersion
             def framework = result.framework
             def buildManager = result.buildManager
+
+            if( runtimeVersion == null || runtimeVersion == "UNKNOWN" ) {
+                // get from compiler, the compiler is passed looks like /usr/lib/nodejs/18.5.0
+                runtimeVersion = compiler.split("/").last()
+            }
 
             if (componentId && sourceCodeUrl) {
                 uploadDependency(compiler, runtimeVersion, framework, buildManager, componentId, branch, sourceCodeUrl, dependencies)

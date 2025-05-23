@@ -1,14 +1,19 @@
 package org.akj.test.tracker.application.mapper;
 
-import org.akj.test.tracker.application.dto.ComponentAndDependencyDto;
-import org.akj.test.tracker.application.dto.ComponentDto;
-import org.akj.test.tracker.application.dto.DependencyDto;
-import org.akj.test.tracker.domain.model.BuildManager;
-import org.akj.test.tracker.domain.model.ComponentAndDependency;
-import org.akj.test.tracker.domain.model.ProgramLanguage;
+import org.akj.test.tracker.application.component.dto.ComponentAndDependencyDto;
+import org.akj.test.tracker.application.component.dto.ComponentDto;
+import org.akj.test.tracker.application.component.dto.DependencyDto;
+import org.akj.test.tracker.application.component.dto.RuntimeInfoDto;
+import org.akj.test.tracker.application.component.mapper.ComponentAppMapstructMapper;
+import org.akj.test.tracker.domain.common.model.Dependency;
+import org.akj.test.tracker.domain.common.model.ProgramLanguage;
+import org.akj.test.tracker.domain.common.model.RuntimeType;
+import org.akj.test.tracker.domain.component.model.BuildManager;
+import org.akj.test.tracker.domain.component.model.ComponentAndDependency;
+import org.akj.test.tracker.domain.component.model.ComponentMetadata;
+import org.akj.test.tracker.domain.component.model.RuntimeInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
 import org.mockito.MockitoAnnotations;
 
 import java.time.Instant;
@@ -19,8 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class ComponentAppMapstructMapperTest {
 
-    @InjectMocks
-    private ComponentAppMapstructMapper mapper;
+    private ComponentAppMapstructMapper mapper = ComponentAppMapstructMapper.INSTANCE;
 
     @BeforeEach
     public void setUp() {
@@ -36,10 +40,10 @@ public class ComponentAppMapstructMapperTest {
                 "componentId789",
                 "main",
                 "/tools/jdk17",
-                "jdk17",
+                RuntimeInfoDto.builder().type(RuntimeType.JDK).version("17").build(),
                 ProgramLanguage.JAVA,
                 BuildManager.MAVEN,
-                Arrays.asList(new DependencyDto("org.example:artefact1", "1.0.0")),
+                Arrays.asList(new DependencyDto("org.example:artefact1", "1.0.0", "test")),
                 Instant.now(),
                 Instant.now()
         );
@@ -69,15 +73,15 @@ public class ComponentAppMapstructMapperTest {
         // Arrange
         ComponentAndDependency domain = new ComponentAndDependency(
                 "id123",
-                new ComponentDto("componentName", "https://github.com/test", "eim456"),
+                new ComponentMetadata("componentName", "https://github.com/test", "eim456"),
                 "componentId789",
                 "main",
                 "/tools/jdk17",
-                "jdk17",
+                RuntimeInfo.builder().type(RuntimeType.JDK).version("17").build(),
                 ProgramLanguage.JAVA,
                 BuildManager.MAVEN,
                 "xx9080jj&jkjl",
-                Arrays.asList(new DependencyDto("org.example:artefact1", "1.0.0")),
+                Arrays.asList(new Dependency("org.example:artefact1", "1.0.0", "test")),
                 Instant.now(),
                 Instant.now()
         );
@@ -101,5 +105,30 @@ public class ComponentAppMapstructMapperTest {
         assertEquals(1, dto.getDependencies().size());
         assertEquals(domain.getDependencies().get(0).getArtefact(), dto.getDependencies().get(0).getArtefact());
         assertEquals(domain.getDependencies().get(0).getVersion(), dto.getDependencies().get(0).getVersion());
+    }
+
+    @Test
+    void testRuntimeInfoMapping() {
+        // Test DTO to Domain
+        RuntimeInfoDto dto = RuntimeInfoDto.builder()
+                .type(RuntimeType.JDK)
+                .version("17")
+                .build();
+
+        RuntimeInfo domain = ComponentAppMapstructMapper.INSTANCE.toDomain(dto);
+        assertNotNull(domain);
+        assertEquals(RuntimeType.JDK, domain.getType());
+        assertEquals("17", domain.getVersion());
+
+        // Test Domain to DTO
+        RuntimeInfo domainObj = RuntimeInfo.builder()
+                .type(RuntimeType.PYTHON)
+                .version("3.9")
+                .build();
+
+        RuntimeInfoDto dtoResult = ComponentAppMapstructMapper.INSTANCE.toDto(domainObj);
+        assertNotNull(dtoResult);
+        assertEquals(RuntimeType.PYTHON, dtoResult.getType());
+        assertEquals("3.9", dtoResult.getVersion());
     }
 }

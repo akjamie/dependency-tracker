@@ -1,12 +1,15 @@
 package org.akj.test.tracker.application.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.akj.test.tracker.application.dto.ComponentAndDependencyDto;
-import org.akj.test.tracker.application.dto.ComponentDto;
-import org.akj.test.tracker.application.dto.DependencyDto;
-import org.akj.test.tracker.application.mapper.ComponentAppMapstructMapper;
-import org.akj.test.tracker.domain.model.*;
-import org.akj.test.tracker.infrastructure.storage.repository.ComponentRepository;
+import org.akj.test.tracker.application.component.dto.ComponentAndDependencyDto;
+import org.akj.test.tracker.application.component.dto.ComponentDto;
+import org.akj.test.tracker.application.component.dto.DependencyDto;
+import org.akj.test.tracker.application.component.mapper.ComponentAppMapstructMapper;
+import org.akj.test.tracker.application.component.service.ComponentService;
+import org.akj.test.tracker.domain.component.model.ComponentAndDependency;
+import org.akj.test.tracker.domain.component.model.ComponentMetadata;
+import org.akj.test.tracker.domain.common.model.Dependency;
+import org.akj.test.tracker.infrastructure.storage.component.repository.ComponentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -50,8 +53,8 @@ class ComponentServiceTest {
                 .name("test-component")
                 .build());
         domainObject.setDependencies(List.of(
-                new Dependency("dep1", "1.0.0"),
-                new Dependency("dep2", "2.0.0")
+                new Dependency("dep1", "1.0.0", "compile"),
+                new Dependency("dep2", "2.0.0", "compile")
         ));
     }
 
@@ -77,14 +80,14 @@ class ComponentServiceTest {
         existing.setId("test-id");
         existing.setComponentId("test-package-info");
         existing.setBranch("main");
-        existing.setChecksum("468552597895d462");
+        existing.setChecksum("3bafbdf90833453b");
         existing.setMetadata(ComponentMetadata.builder()
                 .sourceCodeUrl("https://example.com/test-component")
                 .name("test-component")
                 .build());
         existing.setDependencies(List.of(
-                new Dependency("dep1", "1.0.0"),
-                new Dependency("dep2", "2.0.0")
+                new Dependency("dep1", "1.0.0", "compile"),
+                new Dependency("dep2", "2.0.0", "compile")
         ));
 
         ComponentAndDependencyDto testDto = getComponentAndDependencyDto();
@@ -130,8 +133,8 @@ class ComponentServiceTest {
                 .name("test-component")
                 .build());
         existing.setDependencies(List.of(
-                new Dependency("dep1", "1.0.1"),
-                new Dependency("dep2", "2.0.0")
+                new Dependency("dep1", "1.0.1", "compile"),
+                new Dependency("dep2", "2.0.0", "compile")
         ));
 
         when(componentRepository.findByComponentIdAndBranch(anyString(), anyString()))

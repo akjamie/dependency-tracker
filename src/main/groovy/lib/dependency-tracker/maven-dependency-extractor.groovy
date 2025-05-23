@@ -30,18 +30,6 @@ class MavenDependencyManager {
         }
     }
 
-    static class ArtifactInfo {
-        String groupId
-        String artifactId
-        String version
-        String packaging = 'jar'  // default packaging
-
-
-        String toString() {
-            return "${groupId}:${artifactId}:${version}"
-        }
-    }
-
     static Node parsePom(String content, String pomFile) {
         try {
             println "[INFO] parsePom, content length: ${content.length()}, pomFile: ${pomFile}"
@@ -963,6 +951,7 @@ class MavenDependencyManager {
         // Extract name from sourceCodeUrl
         def name = extractNameFromSourceCodeUrl(sourceCodeUrl)
 
+
         // Prepare the request payload
         def payload = [
                 component   : [
@@ -973,7 +962,10 @@ class MavenDependencyManager {
                 componentId : componentId,
                 branch      : branch,
                 compiler    : compiler,
-                runtimeVersion: runtimeVersion,
+                runtimeInfo  : [
+                        version: runtimeVersion,
+                        type   : 'JDK',
+                ],
                 language: 'JAVA',
                 buildManager: 'MAVEN',
                 dependencies: dependencies.collect { dep ->
@@ -1138,7 +1130,7 @@ class MavenDependencyManager {
             // Remove any non-numeric characters
             version = version.replaceAll('[^0-9]', '')
             // Add 'JDK ' prefix
-            return "JDK ${version}"
+            return "${version}"
         }
         
         println "[WARN] Could not determine Java version from POM"
