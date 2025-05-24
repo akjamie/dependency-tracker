@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
+import java.time.Instant;
+
 @Document(collection = "evergreen_rules")
 @Data
 @Builder
@@ -31,6 +33,8 @@ public class EverGreenRule {
     private String createdBy = "System";
     @Builder.Default
     private String updatedBy = "System";
-    private String createdAt;
-    private String updatedAt;
+    private Instant createdAt;
+    private Instant updatedAt;
+
+    private String checksum;
 }

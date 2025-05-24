@@ -1,5 +1,6 @@
 package org.akj.test.tracker.application.rule.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -15,14 +16,16 @@ import org.akj.test.tracker.domain.rule.model.VersionOperator;
 @AllArgsConstructor
 
 public class DependencyTargetDto {
+    @NotBlank(message = "Artefact is required")
     private String artefact;
 
+    @NotBlank(message = "Version is required")
     @Pattern(regexp = "^[0-9]+(\\.[0-9]+)*(-[a-zA-Z0-9]+)?$",
             message = "Invalid version format. Expected format: x.y.z[-suffix]")
     @Size(min = 1, max = 30,
             message = "Version must be between 1 and 30 characters long")
     private String version;
 
-    @NotNull
+    @NotNull(message = "Version operator is required")
     private VersionOperator operator;
 }

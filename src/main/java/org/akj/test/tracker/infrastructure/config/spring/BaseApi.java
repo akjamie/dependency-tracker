@@ -13,6 +13,12 @@ public abstract class BaseApi {
         return ResponseEntity.ok(ApiResponse.success(data, message));
     }
 
+    protected <T> ResponseEntity<ApiResponse<T>> error(HttpStatus status, String message) {
+        return ResponseEntity
+                .status(status)
+                .body(ApiResponse.error(status.value(), message));
+    }
+
     protected <T> ResponseEntity<ApiResponse<T>> created(T data) {
         return ResponseEntity
                 .status(HttpStatus.CREATED)

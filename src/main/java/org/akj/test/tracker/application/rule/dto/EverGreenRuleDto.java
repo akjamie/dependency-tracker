@@ -43,4 +43,6 @@ public class EverGreenRuleDto {
     private String updatedBy = "System";
     private String createdAt;
     private String updatedAt;
+
+    private String checksum;
 }
