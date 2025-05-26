@@ -49,7 +49,7 @@ public class EverGreenRuleApi extends BaseApi {
         }
     }
 
-    @PatchMapping("/{id}")
+    @PostMapping("/{id}")
     @Operation(
             summary = "Update a rule",
             description = "Update an existing rule in the system.",

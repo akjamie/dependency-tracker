@@ -7,6 +7,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Optional;
 
@@ -22,8 +23,8 @@ public interface EverGreenRuleRepository extends MongoRepository<EverGreenRule, 
             "   { $expr: { $and: [ { $eq: [?3, null] }, { $eq: [?4, null] } ] } } " +
             "] } " +
             "] }")
-    Page<EverGreenRule> searchRules(String name, String status, String language, 
-                                  LocalDate dateFrom, LocalDate dateTo, Pageable pageable);
+    Page<EverGreenRule> searchRules(String name, String status, String language,
+                                    Instant dateFrom, Instant dateTo, Pageable pageable);
 
     Optional<EverGreenRule> findByChecksum(String checksum);
 }

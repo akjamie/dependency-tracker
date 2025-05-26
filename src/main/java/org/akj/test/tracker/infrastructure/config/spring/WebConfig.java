@@ -1,4 +1,4 @@
-package org.akj.test.tracker.infrastructure.config;
+package org.akj.test.tracker.infrastructure.config.spring;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,7 +12,7 @@ public class WebConfig implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
             .allowedOrigins("*")  // Add your frontend URL
-            .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+            .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
             .allowedHeaders("*")
             // .allowCredentials(true)
             .maxAge(3600);

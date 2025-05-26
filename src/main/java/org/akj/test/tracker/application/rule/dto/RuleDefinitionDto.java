@@ -1,5 +1,6 @@
 package org.akj.test.tracker.application.rule.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -12,6 +13,7 @@ import org.akj.test.tracker.domain.common.model.ProgramLanguage;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class RuleDefinitionDto {
     @NotNull
     private ProgramLanguage language;

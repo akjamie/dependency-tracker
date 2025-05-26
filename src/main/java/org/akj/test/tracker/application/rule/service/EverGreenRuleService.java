@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -76,19 +77,18 @@ public class EverGreenRuleService {
         EverGreenRule existingRule = everGreenRuleRepository.findById(ruleDto.getId())
                 .orElseThrow(() -> new IllegalArgumentException("Rule not found with id: " + ruleDto.getId()));
 
-        // Calculate new checksum
-        EverGreenRule newRule = everGreenRuleMapstructMapper.toDomain(ruleDto);
-        String newChecksum = calculateChecksum(newRule);
-
-        // If content hasn't changed, return existing rule
-        if (newChecksum.equals(existingRule.getChecksum())) {
-            log.info("No changes detected in rule content, skipping update for rule: {}", ruleDto.getId());
-            return everGreenRuleMapstructMapper.toDto(existingRule);
-        }
-
         // Update existing rule
         everGreenRuleMapstructMapper.updateDomainFromDto(ruleDto, existingRule);
+
+        // Ensure status is updated
+        if (ruleDto.getStatus() != null) {
+            existingRule.setStatus(ruleDto.getStatus());
+        }
+
         existingRule.setUpdatedAt(Instant.now());
+
+        // Calculate new checksum
+        String newChecksum = calculateChecksum(existingRule);
         existingRule.setChecksum(newChecksum);
 
         EverGreenRule updatedRule = everGreenRuleRepository.save(existingRule);
@@ -129,18 +129,22 @@ public class EverGreenRuleService {
     }
 
     public EverGreenRuleSearchResponse searchRules(String name, String language, String status,
-                                                 LocalDate fromDate, LocalDate toDate,
-                                                 int page, int size) {
+                                                   LocalDate fromDate, LocalDate toDate,
+                                                   int page, int size) {
         log.info("Searching rules with criteria - name: {}, language: {}, status: {}, fromDate: {}, toDate: {}, page: {}, size: {}",
                 name, language, status, fromDate, toDate, page, size);
+
+        // convert LocalDate to Instant
+        Instant fromDateInstant = fromDate != null ? fromDate.atStartOfDay().toInstant(java.time.ZoneOffset.UTC) : null;
+        Instant toDateInstant = toDate != null ? toDate.atStartOfDay().plus(24 * 3600 - 1, ChronoUnit.SECONDS).toInstant(java.time.ZoneOffset.UTC) : null;
 
         Pageable pageable = PageRequest.of(page - 1, size);
         Page<EverGreenRule> rulesPage = everGreenRuleRepository.searchRules(
                 name != null ? name : "",
                 status,
                 language,
-                fromDate,
-                toDate,
+                fromDateInstant,
+                toDateInstant,
                 pageable
         );
 

@@ -1,5 +1,6 @@
 package org.akj.test.tracker.application.rule.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import lombok.AllArgsConstructor;
@@ -11,6 +12,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class TargetDto {
     /**
      * For runtime upgrades (e.g., JDK 8 -> JDK 11)
