@@ -6,7 +6,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.akj.test.tracker.domain.common.model.Dependency;
 import org.akj.test.tracker.domain.common.model.ProgramLanguage;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
 import java.time.Instant;
@@ -20,7 +22,9 @@ import java.util.List;
 @Document(collection = "component_dependency")
 public class ComponentAndDependency {
 
-    @MongoId
+//    @MongoId
+    @Id
+    @Field("_id")
     private String id;
 
     private ComponentMetadata metadata;
