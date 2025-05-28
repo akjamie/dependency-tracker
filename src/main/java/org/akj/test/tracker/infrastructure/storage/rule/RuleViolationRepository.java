@@ -16,19 +16,42 @@ import java.util.Optional;
 public interface RuleViolationRepository extends MongoRepository<RuleViolation, String> {
     
     @Query(value = "{ $and: [ " +
-            "{ $or: [ { 'ruleId': ?0 }, { $expr: { $eq: [?0, null] } } ] }, " +
-            "{ $or: [ { 'projectId': ?1 }, { $expr: { $eq: [?1, null] } } ] }, " +
-            "{ $or: [ { 'status': ?2 }, { $expr: { $eq: [?2, null] } } ] }, " +
             "{ $or: [ " +
-            "   { 'createdAt': { $gte: ?3, $lte: ?4 } }, " +
-            "   { $expr: { $and: [ { $eq: [?3, null] }, { $eq: [?4, null] } ] } } " +
+            "   { $expr: { $eq: [?0, null] } }, " +
+            "   { $expr: { $eq: [?0, ''] } }, " +
+            "   { $expr: { $and: [ " +
+            "       { $ne: [?0, null] }, " +
+            "       { $ne: [?0, ''] }, " +
+            "       { $regexMatch: { input: '$ruleName', regex: ?0, options: 'i' } } " +
+            "   ] } } " +
+            "] }, " +
+            "{ $or: [ " +
+            "   { $expr: { $eq: [?1, null] } }, " +
+            "   { $expr: { $eq: [?1, ''] } }, " +
+            "   { $expr: { $and: [ " +
+            "       { $ne: [?1, null] }, " +
+            "       { $ne: [?1, ''] }, " +
+            "       { $regexMatch: { input: '$componentName', regex: ?1, options: 'i' } } " +
+            "   ] } } " +
+            "] }, " +
+            "{ $or: [ { 'status': ?2 }, { $expr: { $eq: [?2, null] } } ] } " +
+            "] }")
+    Page<RuleViolation> searchViolations(String ruleName, String componentName, ViolationStatus status, Pageable pageable);
+
+    @Query(value = "{ $and: [ " +
+            "{ 'ruleId': ?0 }, " +
+            "{ $or: [ " +
+            "   { $expr: { $eq: [?1, null] } }, " +
+            "   { $expr: { $eq: [?1, ''] } }, " +
+            "   { $expr: { $and: [ " +
+            "       { $ne: [?1, null] }, " +
+            "       { $ne: [?1, ''] }, " +
+            "       { $regexMatch: { input: '$componentName', regex: ?1, options: 'i' } } " +
+            "   ] } } " +
             "] } " +
             "] }")
-    Page<RuleViolation> searchViolations(String ruleId, String projectId, ViolationStatus status,
-                                       Instant dateFrom, Instant dateTo, Pageable pageable);
-
+    Page<RuleViolation> searchViolationsByRuleId(String ruleId, String componentName, Pageable pageable);
 
     RuleViolation findByRuleIdAndComponentId(String ruleId, String componentId);
 
-    List<RuleViolation> findByRuleIdAndComponentIdAndStatus(String ruleId, String componentId, ViolationStatus violationStatus);
 }

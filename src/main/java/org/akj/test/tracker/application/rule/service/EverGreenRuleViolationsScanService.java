@@ -10,7 +10,6 @@ import org.akj.test.tracker.domain.rule.model.*;
 import org.akj.test.tracker.infrastructure.storage.component.repository.ComponentRepository;
 import org.akj.test.tracker.infrastructure.storage.rule.EverGreenRuleRepository;
 import org.akj.test.tracker.infrastructure.storage.rule.RuleViolationRepository;
-import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,12 +73,14 @@ public class EverGreenRuleViolationsScanService {
     private RuleViolation checkRuleViolations(EverGreenRule rule, ComponentAndDependency component, RuleViolation existingViolation) {
         Instant now = Instant.now();
         boolean hasViolation = false;
-        
+
         // Create or get existing violation
         RuleViolation violation = existingViolation != null ? existingViolation :
                 RuleViolation.builder()
                         .ruleId(rule.getId())
                         .componentId(component.getId())
+                        .ruleName(rule.getName())
+                        .componentName(component.getMetadata().getName())
                         .createdAt(now)
                         .createdBy("System")
                         .updatedBy("System")
@@ -95,7 +96,6 @@ public class EverGreenRuleViolationsScanService {
                 violation.setStatus(ViolationStatus.IGNORED);
                 violation.setUpdatedAt(now);
                 violation.setUpdatedBy("System");
-                return violation;
             }
         } else if (rule.getStatus() == RuleStatus.ACTIVE) {
             // For ACTIVE rules, if violation was IGNORED (due to previous DRAFT status)
@@ -147,8 +147,8 @@ public class EverGreenRuleViolationsScanService {
                 violation.setStatus(ViolationStatus.OPEN);
                 violation.setHasViolation(true);
                 violation.setUpdatedAt(now);
-                return violation;
             }
+            return violation;
         } else if (existingViolation != null) {
             // If no violation found but there was a previous violation, mark as RESOLVED
             log.info("Violation resolved: ruleId={}, componentId={}", rule.getId(), component.getId());
@@ -197,95 +197,4 @@ public class EverGreenRuleViolationsScanService {
         return violations;
     }
 
-//    public Page<RuleViolation> searchViolations(String ruleId, String componentId, ViolationStatus status,
-//                                                Instant dateFrom, Instant dateTo, int page, int size) {
-//        Pageable pageable = PageRequest.of(page - 1, size);
-//        return ruleViolationRepository.searchViolations(ruleId, componentId, status, dateFrom, dateTo, pageable);
-//    }
-//
-//    public Page<RuleViolationDto> searchViolationsWithDetails(String ruleId, String componentId,
-//                                                              ViolationStatus status, Instant dateFrom,
-//                                                              Instant dateTo, int page, int size) {
-//        // Create aggregation pipeline
-//        MatchOperation matchStage = Aggregation.match(
-//                new Criteria().andOperator(
-//                        ruleId != null ? Criteria.where("ruleId").is(ruleId) : new Criteria(),
-//                        componentId != null ? Criteria.where("componentId").is(componentId) : new Criteria(),
-//                        status != null ? Criteria.where("status").is(status) : new Criteria(),
-//                        dateFrom != null && dateTo != null ?
-//                                Criteria.where("createdAt").gte(dateFrom).lte(dateTo) : new Criteria()
-//                )
-//        );
-//
-//        LookupOperation ruleLookup = LookupOperation.newLookup()
-//                .from("evergreen_rules")
-//                .localField("ruleId")
-//                .foreignField("_id")
-//                .as("rule");
-//
-//        LookupOperation componentLookup = LookupOperation.newLookup()
-//                .from("components")
-//                .localField("componentId")
-//                .foreignField("_id")
-//                .as("component");
-//
-//        ProjectionOperation projectStage = Aggregation.project()
-//                .and("_id").as("id")
-//                .and("ruleId").as("ruleId")
-//                .and("componentId").as("componentId")
-//                .and("runtimeCurrentVersion").as("runtimeCurrentVersion")
-//                .and("runtimeTargetVersion").as("runtimeTargetVersion")
-//                .and("dependencyViolations").as("dependencyViolations")
-//                .and("status").as("status")
-//                .and("createdAt").as("createdAt")
-//                .and("updatedAt").as("updatedAt")
-//                .and("resolvedAt").as("resolvedAt")
-//                .and("rule").arrayElementAt(0).as("ruleDetails")
-//                .and("component").arrayElementAt(0).as("componentDetails");
-//
-//        Aggregation aggregation = Aggregation.newAggregation(
-//                matchStage,
-//                ruleLookup,
-//                componentLookup,
-//                projectStage
-//        );
-//
-//        return mongoTemplate.aggregate(aggregation, "rule_violations", RuleViolationDto.class)
-//                .getMappedResults();
-//    }
-
-    @Transactional
-    public RuleViolation updateViolationStatus(String violationId, ViolationStatus newStatus, String updatedBy) {
-        RuleViolation violation = ruleViolationRepository.findById(violationId)
-                .orElseThrow(() -> new IllegalArgumentException("Violation not found with id: " + violationId));
-
-        violation.setStatus(newStatus);
-        violation.setUpdatedBy(updatedBy);
-        violation.setUpdatedAt(Instant.now());
-
-        if (newStatus == ViolationStatus.RESOLVED) {
-            violation.setResolvedAt(Instant.now());
-        }
-
-        return ruleViolationRepository.save(violation);
-    }
-
-    @Transactional
-    public void resolveAllViolationsForRule(String ruleId, String componentId, String updatedBy) {
-        List<RuleViolation> violations = ruleViolationRepository.findByRuleIdAndComponentIdAndStatus(
-                ruleId, componentId, ViolationStatus.OPEN);
-
-        Instant now = Instant.now();
-        violations.forEach(violation -> {
-            violation.setStatus(ViolationStatus.RESOLVED);
-            violation.setUpdatedBy(updatedBy);
-            violation.setUpdatedAt(now);
-            violation.setResolvedAt(now);
-        });
-
-        if (!violations.isEmpty()) {
-            ruleViolationRepository.saveAll(violations);
-            log.info("Resolved {} violations for rule {} in component {}", violations.size(), ruleId, componentId);
-        }
-    }
 } 

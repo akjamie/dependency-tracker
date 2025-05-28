@@ -22,6 +22,10 @@ public class RuleViolation {
     private String ruleId;
     // id for componentAndDependency
     private String componentId;
+    
+    // Added fields for display
+    private String ruleName;
+    private String componentName;
 
     // runtime or artefact details
     private RuntimeTarget runtimeCurrentVersion;
