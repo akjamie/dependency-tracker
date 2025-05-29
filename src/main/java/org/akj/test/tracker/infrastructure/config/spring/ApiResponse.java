@@ -79,4 +79,22 @@ public class ApiResponse<T> {
                         .build())
                 .build();
     }
+
+    public static <T> ApiResponse<T> accepted(T data) {
+        return ApiResponse.<T>builder()
+                .timestamp(LocalDateTime.now())
+                .status(201)
+                .message("Accepted")
+                .data(data)
+                .build();
+    }
+
+    public static <T> ApiResponse<T> created(T data) {
+        return ApiResponse.<T>builder()
+                .timestamp(LocalDateTime.now())
+                .status(201)
+                .message("Resource created successfully")
+                .data(data)
+                .build();
+    }
 }

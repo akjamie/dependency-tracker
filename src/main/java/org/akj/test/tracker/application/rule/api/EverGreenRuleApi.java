@@ -33,7 +33,7 @@ public class EverGreenRuleApi extends BaseApi {
     @Operation(
             summary = "Add a rule",
             description = "Add a rule to the system. This is used for rule management.",
-            tags = "rules")
+            tags = "Ever-greening Rules")
     ResponseEntity<ApiResponse<EverGreenRuleDto>> addRule(@RequestBody @Valid EverGreenRuleDto rule) {
         log.info("Adding rule: {}", rule);
         try {
@@ -53,7 +53,7 @@ public class EverGreenRuleApi extends BaseApi {
     @Operation(
             summary = "Update a rule",
             description = "Update an existing rule in the system.",
-            tags = "rules")
+            tags = "Ever-greening Rules")
     ResponseEntity<ApiResponse<EverGreenRuleDto>> updateRule(
             @Parameter(description = "ID of the rule to update", required = true)
             @PathVariable String id,
@@ -79,7 +79,7 @@ public class EverGreenRuleApi extends BaseApi {
     @Operation(
             summary = "Get a rule by ID",
             description = "Retrieve a rule by its ID.",
-            tags = "rules")
+            tags = "Ever-greening Rules")
     ResponseEntity<ApiResponse<EverGreenRuleDto>> getRuleById(
             @Parameter(description = "ID of the rule to retrieve", required = true)
             @PathVariable String id) {
@@ -100,7 +100,7 @@ public class EverGreenRuleApi extends BaseApi {
     @Operation(
             summary = "Search rules",
             description = "Search for rules based on various criteria.",
-            tags = "rules")
+            tags = "Ever-greening Rules")
     ResponseEntity<ApiResponse<EverGreenRuleSearchResponse>> searchRules(
             @RequestBody @Valid EverGreenRuleSearchRequest request) {
         

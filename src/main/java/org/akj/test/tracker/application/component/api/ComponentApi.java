@@ -12,6 +12,8 @@ import org.akj.test.tracker.infrastructure.config.spring.BaseApi;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.concurrent.CompletableFuture;
+
 @RestController
 @RequestMapping("/api/v1/components")
 @Slf4j
@@ -29,7 +31,7 @@ public class ComponentApi extends BaseApi {
             summary = "Register a component",
             description =
                     "Register a component with its dependencies. This is used for git repo scan and dependency analysis.",
-            tags = "component")
+            tags = "Scanned Components")
     public ResponseEntity<ApiResponse<ComponentAndDependencyDto>> register(@RequestBody @Valid ComponentDto componentDto) {
         log.info("Registering component: {}", componentDto);
         ComponentAndDependencyDto componentAndDependency =
@@ -44,23 +46,21 @@ public class ComponentApi extends BaseApi {
     @Operation(
             summary = "Unregister a component",
             description = "Unregister a component with its dependencies.",
-            tags = "component")
+            tags = "Scanned Components")
     public ResponseEntity<ApiResponse<Boolean>> unregister(@RequestBody @Valid ComponentDto componentDto) {
         log.info("Unregistering component: {}", componentDto);
         // TODO: Add proper deletion logic in service layer
         throw new UnsupportedOperationException("Not implemented yet");
     }
 
-//    @GetMapping
-//    public
 
     @PutMapping
     @Operation(
             summary = "Upload a component & its dependencies",
             description =
                     "Upload a component with its dependencies. This is used for git repo scan and dependency analysis.",
-            tags = "component")
-    public ResponseEntity<ApiResponse<ComponentAndDependencyDto>> upload(
+            tags = "Scanned Components")
+    public ResponseEntity<ApiResponse<Void>> upload(
             @RequestBody @Valid ComponentAndDependencyDto componentAndDependencies) {
 
         // since basic validations has been covered in JSR 303 validation, we just need to check the
@@ -78,7 +78,17 @@ public class ComponentApi extends BaseApi {
                 componentAndDependencies.getComponent(),
                 componentAndDependencies.getDependencies().size());
 
-        componentService.saveComponentAndDependency(componentAndDependencies);
-        return ok(componentAndDependencies);
+        // Asynchronous processing
+        // Todo: to create thread pool for async processing
+        CompletableFuture.runAsync(() -> {
+            try {
+                componentService.saveComponentAndDependency(componentAndDependencies);
+                log.info("Async processing completed for component: {}", componentAndDependencies.getComponent());
+            } catch (Exception e) {
+                log.error("Async processing failed for component: {}", componentAndDependencies.getComponent(), e);
+            }
+        });
+
+        return created(null);
     }
 }

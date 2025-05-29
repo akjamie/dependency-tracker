@@ -38,6 +38,7 @@ public class EverGreenRuleViolationApi extends BaseApi {
                     request.getRuleName(),
                     request.getComponentName(),
                     request.getStatus(),
+                    request.getRuleId(),
                     request.getPage(),
                     request.getSize()
             );

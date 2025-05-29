@@ -22,7 +22,7 @@ public abstract class BaseApi {
     protected <T> ResponseEntity<ApiResponse<T>> created(T data) {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(ApiResponse.success(data, "Resource created successfully"));
+                .body(ApiResponse.created(data));
     }
 
     protected <T> ResponseEntity<ApiResponse<T>> noContent() {

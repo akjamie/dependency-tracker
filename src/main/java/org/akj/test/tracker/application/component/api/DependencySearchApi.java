@@ -26,7 +26,7 @@ public class DependencySearchApi extends BaseApi {
     @Operation(
             summary = "Search components",
             description = "Search components with various criteria",
-            tags = "dependency"
+            tags = "Dependency & Facets"
     )
     public ResponseEntity<ApiResponse<DependencySearchResponse>> search(@RequestBody @Valid DependencySearchRequest request) {
         log.info("Received search request: {}", request);
@@ -37,7 +37,7 @@ public class DependencySearchApi extends BaseApi {
     @Operation(
             summary = "Get technology stack facet",
             description = "Get technology stack facet",
-            tags = "facets"
+            tags = "Dependency & Facets"
     )
     public ResponseEntity<ApiResponse<TechnologyStackFacet>> getTechnologyStackFacet() {
         return ok(dependencySearchService.getTechnologyStackFacet());
@@ -47,7 +47,7 @@ public class DependencySearchApi extends BaseApi {
     @Operation(
             summary = "Get version distribution facet",
             description = "Get version distribution facet",
-            tags = "facets"
+            tags = "Dependency & Facets"
     )
     public ResponseEntity<ApiResponse<VersionDistributionFacet>> getVersionDistributionFacet() {
         return ok(dependencySearchService.getVersionDistributionFacet());
@@ -57,7 +57,7 @@ public class DependencySearchApi extends BaseApi {
     @Operation(
             summary = "Get component activity facet",
             description = "Get component activity facet",
-            tags = "facets"
+            tags = "Dependency & Facets"
     )
     public ResponseEntity<ApiResponse<ComponentActivityFacet>> getComponentActivityFacet() {
         return ok(dependencySearchService.getComponentActivityFacet());

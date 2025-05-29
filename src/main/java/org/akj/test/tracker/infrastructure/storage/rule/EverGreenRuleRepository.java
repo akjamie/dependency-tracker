@@ -5,6 +5,7 @@ import org.akj.test.tracker.domain.rule.model.EverGreenRule;
 import org.akj.test.tracker.domain.rule.model.RuleStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.repository.Aggregation;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -33,4 +34,12 @@ public interface EverGreenRuleRepository extends MongoRepository<EverGreenRule, 
     List<EverGreenRule> findByRuleDefinitionLanguage(ProgramLanguage language);
 
     List<EverGreenRule> findByRuleDefinitionLanguageAndStatusIn(ProgramLanguage language, List<RuleStatus> status);
+
+    long countByStatusIn(List<String> statuses);
+
+    @Aggregation(pipeline = {
+        "{ $group: { _id: '$status', count: { $sum: 1 } } }",
+        "{ $project: { _id: 0, id: '$_id', count: 1 } }"
+    })
+    List<RuleStatusAggregation> getRuleStatusDistribution();
 }

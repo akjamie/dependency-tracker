@@ -19,9 +19,9 @@ public class EverGreenRuleViolationsService {
     private final RuleViolationRepository ruleViolationRepository;
 
     public RuleViolationSearchResponse searchViolations(String ruleName, String componentName,
-            ViolationStatus status, int page, int size) {
-        log.debug("Searching violations with ruleName: {}, componentName: {}, status: {}, page: {}, size: {}",
-                ruleName, componentName, status, page, size);
+            ViolationStatus status, String ruleId, int page, int size) {
+        log.debug("Searching violations with ruleName: {}, componentName: {}, status: {}, ruleId: {}, page: {}, size: {}",
+                ruleName, componentName, status, ruleId, page, size);
 
         // Create pageable with sorting by createdAt desc
         Pageable pageable = PageRequest.of(
@@ -40,6 +40,7 @@ public class EverGreenRuleViolationsService {
             ruleNamePattern,
             componentNamePattern,
             status,
+            ruleId,
             pageable
         );
 
