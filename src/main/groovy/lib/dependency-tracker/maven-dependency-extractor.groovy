@@ -382,6 +382,18 @@ class MavenDependencyManager {
     }
 
     static List<PackageDependency> extractDependencies(Node project, boolean isRoot = true) {
+        // First try using Maven command line if available
+        if (isRoot && isMavenAvailable()) {
+            def pomFile = project.@file ?: 'pom.xml'
+            def mavenDeps = extractDependenciesUsingMaven(pomFile)
+            if (mavenDeps) {
+                println "[INFO] Successfully extracted dependencies using Maven command line"
+                return mavenDeps
+            }
+            println "[INFO] Falling back to POM parsing method"
+        }
+
+        // Original POM parsing logic as fallback
         def dependencies = []
         def context = new VersionResolutionContext(project)
 
@@ -397,8 +409,8 @@ class MavenDependencyManager {
                 def groupId = resolveProperty(dep.groupId.text(), context.properties)
                 def artifactId = resolveProperty(dep.artifactId.text(), context.properties)
                 def explicitVersion = dep.version.text()
-            def scope = dep.scope.text() ?: 'compile'
-            
+                def scope = dep.scope.text() ?: 'compile'
+                
                 println "[DEBUG] Processing dependency: ${groupId}:${artifactId}"
                 println "[DEBUG] Explicit version from POM: ${explicitVersion}"
 
@@ -408,16 +420,16 @@ class MavenDependencyManager {
                 def dependency = new PackageDependency(groupId: groupId,
                     artifactId: artifactId,
                     currentValue: version,
-                        depType: scope)
+                    depType: scope)
 
-            // Handle optional dependencies
-            if (dep.optional.text() == 'true') {
-                dependency.depType = 'optional'
-            }
+                // Handle optional dependencies
+                if (dep.optional.text() == 'true') {
+                    dependency.depType = 'optional'
+                }
 
                 if (dependency.groupId && dependency.artifactId) {
-                println "[INFO] Found dependency: ${dependency}"
-                dependencies << dependency
+                    println "[INFO] Found dependency: ${dependency}"
+                    dependencies << dependency
                 } else {
                     println "[WARN] Skipping dependency due to missing groupId or artifactId: ${groupId}:${artifactId}"
                 }
@@ -438,76 +450,21 @@ class MavenDependencyManager {
                     def version = context.resolveVersion(groupId, artifactId, explicitVersion)
 
                     def dependency = new PackageDependency(groupId: groupId,
-                    artifactId: artifactId,
-                    currentValue: version,
-                            depType: 'build')
+                        artifactId: artifactId,
+                        currentValue: version,
+                        depType: 'build')
 
                     if (dependency.artifactId) {
-                println "[INFO] Found plugin: ${dependency}"
-                dependencies << dependency
-            }
-        }
+                        println "[INFO] Found plugin: ${dependency}"
+                        dependencies << dependency
+                    }
+                }
             }
         }
         
         return dependencies
     }
 
-    static List<String> extractRepositories(Node project) {
-        def repositories = []
-
-        // Add Maven Central by default
-        repositories << MAVEN_CENTRAL
-
-        project.repositories.repository.each { repo ->
-            def url = repo.url.text()?.trim()
-            if (url) {
-                println "[INFO] Found repository: ${url}"
-                repositories << url
-            }
-        }
-
-        return repositories.unique()
-    }
-
-    static void processAndUpdate(String pomFile) {
-        println "\n=== Processing POM file: ${pomFile} ==="
-
-        def content = new File(pomFile).text
-        def project = parsePom(content, pomFile)
-
-        if (!project) {
-            println "[ERROR] Failed to process POM file: ${pomFile}"
-            return
-        }
-
-        def properties = extractProperties(project)
-        println "\n=== Extracted Properties ==="
-        properties.each { k, v -> println "${k} = ${v}" }
-
-        def dependencies = extractDependencies(project)
-        println "\n=== Dependencies in Current POM ==="
-        dependencies.each { dep -> println dep }
-
-        def repositories = extractRepositories(project)
-        println "\n=== Extracted Repositories ==="
-        repositories.each { repo -> println repo }
-    }
-
-    static String resolveParentFile(String packageFile, String parentPath) {
-        def parentFile = 'pom.xml'
-        def parentDir = parentPath
-        def parentBasename = new File(parentPath).name
-
-        if (parentBasename == 'pom.xml' || parentBasename.endsWith('.pom.xml')) {
-            parentFile = parentBasename
-            parentDir = new File(parentPath).parent
-        }
-
-        def dir = new File(packageFile).parent
-        println "[DEBUG] Resolving parent file: ${parentFile} in dir: ${dir}/${parentDir}"
-        return new File(dir, "${parentDir}/${parentFile}").canonicalPath
-    }
 
     // Equivalent to MavenInterimPackageFile
     static class PackageFile {
@@ -519,75 +476,6 @@ class MavenDependencyManager {
         String packageFileVersion
     }
 
-    static PackageFile extractPackage(String rawContent, String packageFile, Map config) {
-        if (!rawContent) {
-            println "[DEBUG] No content for ${packageFile}"
-            return null
-        }
-
-        def project = parsePom(rawContent, packageFile)
-        if (!project) {
-            println "[DEBUG] Failed to parse POM for ${packageFile}"
-            return null
-        }
-
-        def result = new PackageFile(datasource: 'maven',
-                packageFile: packageFile,
-                deps: [])
-
-        // Extract dependencies
-        result.deps = extractDependencies(project)
-        println "[INFO] Extracted ${result.deps.size()} dependencies"
-
-        // Extract properties
-        def propsNode = project.properties[0]
-        def props = [:]
-        if (propsNode) {
-            propsNode.children().each { propNode ->
-                def key = propNode.name()
-                def val = propNode.text()?.trim()
-                if (key && val) {
-                    // Simplified as Groovy doesn't track exact file positions
-                    props[key] = [val: val, fileReplacePosition: -1, packageFile: packageFile]
-                    println "[DEBUG] Found property: ${key} = ${val}"
-                }
-            }
-        }
-        result.mavenProps = props
-
-        // Extract repositories
-        def repositories = project.repositories[0]
-        if (repositories) {
-            def repoUrls = []
-            repositories.repository.each { repo ->
-                def repoUrl = repo.url.text()?.trim()
-                if (repoUrl) {
-                    repoUrls << repoUrl
-                    println "[DEBUG] Found repository: ${repoUrl}"
-                }
-            }
-            result.deps.each { dep ->
-                if (dep.registryUrls != null) {
-                    dep.registryUrls.addAll(repoUrls)
-                }
-            }
-        }
-
-        // Handle parent POM
-        if (packageFile && project.parent) {
-            def parentPath = project.parent.relativePath.text()?.trim() ?: '../pom.xml'
-            result.parent = resolveParentFile(packageFile, parentPath)
-            println "[DEBUG] Found parent POM: ${result.parent}"
-        }
-
-        // Extract version
-        if (project.version) {
-            result.packageFileVersion = project.version.text()?.trim()
-            println "[DEBUG] Found package version: ${result.packageFileVersion}"
-        }
-
-        return result
-    }
 
     static List<String> extractRegistries(String rawContent) {
         if (!rawContent) {
@@ -648,215 +536,6 @@ class MavenDependencyManager {
         }
     }
 
-    static PackageDependency applyProps(PackageDependency dep, String packageFile, Map props) {
-        def result = new PackageDependency(groupId: resolveProperty(dep.groupId, props),
-                artifactId: resolveProperty(dep.artifactId, props),
-                currentValue: resolveProperty(dep.currentValue, props),
-                depType: dep.depType,
-                registryUrls: dep.registryUrls,
-                skipReason: dep.skipReason,
-                props: dep.props)
-        result.propSource = props
-        return result
-    }
-
-    static List<PackageFile> resolveParents(List<PackageFile> packages) {
-        def packageFileNames = []
-        def extractedPackages = [:]
-        def extractedDeps = [:]
-        def extractedProps = [:]
-        def registryUrls = [:]
-
-        // Initialize data structures
-        packages.each { pkg ->
-            def name = pkg.packageFile
-            packageFileNames << name
-            extractedPackages[name] = pkg
-            extractedDeps[name] = []
-            println "[DEBUG] Processing package: $name}"
-        }
-
-        // Process each package
-        packageFileNames.each { name ->
-            registryUrls[name] = [] as Set
-            def propsHierarchy = []
-            def visitedPackages = [] as Set
-            def pkg = extractedPackages[name]
-
-            // Build properties hierarchy
-            while (pkg) {
-                // Add current package properties
-                propsHierarchy.add(0, (Map) (pkg.mavenProps ?: [:]))
-
-                // Collect registry URLs
-                pkg.deps?.each { dep ->
-                    dep.registryUrls?.each { url -> registryUrls[name] << url
-                    }
-                }
-
-                // Process parent if exists and not visited
-                if (pkg.parent && !visitedPackages.contains(pkg.parent)) {
-                    visitedPackages << pkg.parent
-                    
-                    // Load parent package if not already loaded
-                    if (!extractedPackages.containsKey(pkg.parent)) {
-                        try {
-                            def parentFile = new File(pkg.parent)
-                            if (parentFile.exists()) {
-                                def parentContent = parentFile.text
-                                def parentPkg = extractPackage(parentContent, pkg.parent, null)
-                                if (parentPkg) {
-                                    extractedPackages[pkg.parent] = parentPkg
-                                    packageFileNames << pkg.parent
-                                }
-                            } else {
-                                println "[ERROR] Parent POM file not found: ${pkg.parent}"
-                            }
-                        } catch (Exception e) {
-                            println "[ERROR] Failed to load parent POM: ${e.message}"
-                        }
-                    }
-                    
-                    pkg = extractedPackages[pkg.parent]
-                } else {
-                    pkg = null
-                }
-            }
-
-            // Merge properties with parent chain
-            extractedProps[name] = propsHierarchy.inject([:]) { acc, val -> 
-                // Add reference to parent properties for nested resolution
-                val._parentProps = acc
-                // Merge properties, child properties override parent
-                (Map) (acc + val)
-            }
-        }
-
-        // Resolve registry URLs
-        packageFileNames.each { name ->
-            def pkg = extractedPackages[name]
-            pkg.deps.each { rawDep -> rawDep.registryUrls = ([rawDep.registryUrls, registryUrls[name]].flatten()).unique()
-            }
-        }
-
-        // Process dependencies and build final result
-        def rootDeps = [] as Set
-        packageFileNames.each { name ->
-            def pkg = extractedPackages[name]
-            pkg.deps.each { rawDep ->
-                def dep = applyProps(rawDep, name, extractedProps[name])
-                if (dep.depType == 'parent') {
-                    def parentPkg = extractedPackages[pkg.parent]
-                    if ((parentPkg && !parentPkg.parent) || (parentPkg && !packageFileNames.contains(parentPkg.parent))) {
-                        rootDeps << dep.depName
-                    }
-                }
-                def sourceName = dep.propSource ?: name
-                extractedDeps[sourceName] << dep
-            }
-        }
-
-        // Build final package files
-        return packageFileNames.collect { packageFile ->
-            def pkg = extractedPackages[packageFile]
-            def deps = extractedDeps[packageFile]
-            deps.each { dep ->
-                if (rootDeps.contains(dep.depName)) {
-                    dep.depType = 'parent-root'
-                }
-            }
-            return new PackageFile(datasource: pkg.datasource,
-                    packageFile: packageFile,
-                    deps: deps,
-                    packageFileVersion: pkg.packageFileVersion)
-        }
-    }
-
-    static List<PackageFile> cleanResult(List<PackageFile> packageFiles) {
-        packageFiles.each { packageFile ->
-            packageFile.mavenProps = null
-            packageFile.parent = null
-            packageFile.deps.each { dep ->
-                dep.propSource = null
-                if (dep.datasource == 'maven') {
-                    dep.registryUrls << MAVEN_REPO
-                }
-            }
-        }
-        return packageFiles
-    }
-
-    static PackageFile extractExtensions(String rawContent, String packageFile) {
-        if (!rawContent) {
-            return null
-        }
-
-        def extensions = parseExtensions(rawContent, packageFile)
-        if (!extensions) {
-            return null
-        }
-
-        def result = new PackageFile(datasource: 'maven',
-                packageFile: packageFile,
-                deps: [])
-
-        result.deps = extractDependencies(extensions)
-        return result
-    }
-
-    static List<PackageFile> extractAllPackageFiles(Map config, List<String> packageFiles) {
-        def packages = []
-        def additionalRegistryUrls = []
-
-        packageFiles.each { packageFile ->
-            def content = new File(packageFile).text
-            if (!content) {
-                println "[DEBUG] ${packageFile} has no content"
-                return
-            }
-
-            if (packageFile.endsWith('settings.xml')) {
-                def registries = extractRegistries(content)
-                if (registries) {
-                    println "[DEBUG] Found registryUrls in settings.xml: ${registries}"
-                    additionalRegistryUrls.addAll(registries)
-                }
-            } else if (packageFile.endsWith('.mvn/extensions.xml')) {
-                def extensions = extractExtensions(content, packageFile)
-                if (extensions) {
-                    packages << extensions
-                } else {
-                    println "[TRACE] Cannot read extensions in ${packageFile}"
-                }
-            } else {
-                def pkg = extractPackage(content, packageFile, config)
-                if (pkg) {
-                    packages << pkg
-                } else {
-                    println "[TRACE] Cannot read dependencies in ${packageFile}"
-                }
-            }
-        }
-
-        if (additionalRegistryUrls) {
-            packages.each { pkgFile ->
-                pkgFile.deps.each { dep -> dep.registryUrls.addAll(0, additionalRegistryUrls)
-                }
-            }
-        }
-
-        // Process parents to resolve inheritance
-        def result = cleanResult(resolveParents(packages))
-        
-        // After resolving parents, print debug info
-        result.each { pkgFile ->
-            println "[DEBUG] Final package: ${pkgFile.packageFile}"
-            pkgFile.deps.each { dep -> println "[DEBUG] Final dependency: ${dep}"
-            }
-        }
-        
-        return result
-    }
 
     static String resolveProperty(String value, Map<String, String> properties) {
         if (!value) return value
@@ -1136,6 +815,128 @@ class MavenDependencyManager {
         println "[WARN] Could not determine Java version from POM"
         return "UNKNOWN"
     }
+
+    static boolean isMavenAvailable() {
+        try {
+            // Use cmd.exe /c for Windows command execution
+            def command = System.getProperty('os.name').toLowerCase().contains('windows') ? 
+                ['cmd', '/c', 'mvn', '-v'] as String[] : 
+                ['mvn', '-v'] as String[]
+            
+            def process = new ProcessBuilder(command)
+                .redirectErrorStream(true)
+                .start()
+            
+            def output = new StringBuilder()
+            process.inputStream.eachLine { line ->
+                output.append(line).append('\n')
+            }
+            
+            def exitCode = process.waitFor()
+            println "[DEBUG] Maven version output: ${output.toString()}"
+            return exitCode == 0
+        } catch (Exception e) {
+            println "[DEBUG] Maven command not available: ${e.message}"
+            return false
+        }
+    }
+
+    static List<PackageDependency> extractDependenciesUsingMaven(String pomFile) {
+        println "[INFO] Using Maven command line to extract dependencies"
+        def dependencies = []
+        def tempFile = File.createTempFile("maven-deps-", ".txt")
+        
+        try {
+            // Use cmd.exe /c for Windows command execution
+            def command = System.getProperty('os.name').toLowerCase().contains('windows') ? 
+                ['cmd', '/c', 'mvn', 'dependency:tree', '-f', pomFile, "-DoutputFile=${tempFile.absolutePath}", '-DoutputType=text'] as String[] : 
+                ['mvn', 'dependency:tree', '-f', pomFile, "-DoutputFile=${tempFile.absolutePath}", '-DoutputType=text'] as String[]
+            
+            def process = new ProcessBuilder(command)
+                .redirectErrorStream(true)
+                .start()
+            
+            def output = new StringBuilder()
+            process.inputStream.eachLine { line ->
+                output.append(line).append('\n')
+            }
+            
+            def exitCode = process.waitFor()
+            println "[DEBUG] Maven dependency:tree output: ${output.toString()}"
+            
+            if (exitCode != 0) {
+                println "[ERROR] Failed to execute mvn dependency:tree"
+                return []
+            }
+
+            // Parse the output file
+            tempFile.eachLine { line ->
+                println "[DEBUG] Processing line: ${line}"
+                if (line.contains("+-") || line.contains("\\-")) {
+                    def dep = parseMavenDependencyLine(line)
+                    if (dep) {
+                        dependencies << dep
+                    }
+                }
+            }
+        } catch (Exception e) {
+            println "[ERROR] Failed to extract dependencies using Maven: ${e.message}"
+            e.printStackTrace()
+        } finally {
+            tempFile.delete()
+        }
+        println "[DEBUG] Extracted dependencies using mvn dependency:tree: ${dependencies}"
+        return dependencies
+    }
+
+    static PackageDependency parseMavenDependencyLine(String line) {
+        try {
+            // Remove tree characters and trim
+            def cleanLine = line.replaceAll(/[+\\| ]/, '').trim()
+            
+            // Skip empty lines or lines without version
+            if (!cleanLine.contains(':')) return null
+            
+            // Parse GAV (GroupId:ArtifactId:Type:Version:Scope)
+            def parts = cleanLine.split(':')
+            if (parts.length < 3) return null
+            
+            def groupId = parts[0]
+            def artifactId = parts[1]
+            def type = parts.length > 2 ? parts[2] : 'jar'
+            def version = parts.length > 3 ? parts[3] : 'UNKNOWN'
+            def scope = parts.length > 4 ? parts[4] : 'compile'
+            
+            // Determine dependency type
+            def depType = scope
+            if (scope == 'test') {
+                depType = 'test'
+            } else if (scope == 'provided') {
+                depType = 'provided'
+            } else if (scope == 'runtime') {
+                depType = 'runtime'
+            } else if (scope == 'system') {
+                depType = 'system'
+            } else if (scope == 'import') {
+                depType = 'import'
+            } else {
+                depType = 'compile'
+            }
+            
+            println "[DEBUG] Parsed dependency: ${groupId}:${artifactId}:${version} (${depType})"
+            
+            return new PackageDependency(
+                groupId: groupId,
+                artifactId: artifactId,
+                currentValue: version,
+                depType: depType
+            )
+        } catch (Exception e) {
+            println "[WARN] Failed to parse dependency line: ${line}"
+            e.printStackTrace()
+            return null
+        }
+    }
 }
 
 // Main method for testing
@@ -1170,7 +971,7 @@ static void main(String[] args) {
 
         def runtimeVersion = MavenDependencyManager.extractRuntimeVersion(project)
 
-        def dependencies = MavenDependencyManager.extractDependencies(project)
+        def dependencies = MavenDependencyManager.extractDependencies(project, false)
 
         MavenDependencyManager.uploadDependency(compiler, runtimeVersion, componentId, branch, sourceCodeUrl, dependencies)
 
